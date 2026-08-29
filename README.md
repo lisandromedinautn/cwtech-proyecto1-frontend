@@ -1,3 +1,15 @@
+# Distribuidora BV - Sistema de Gestión
+
+## Demo
+
+https://cwtech1.vercel.app/
+
+## Backend
+
+https://proyecto1-back-pa-doglio-falchi-fermani-1hri.onrender.com/
+
+Backend para el sistema de gestión integral de una distribuidora. Construido con NestJS, TypeScript y MySQL, siguiendo una arquitectura modular con patrones de diseño orientados al dominio.
+
 # Proyecto1-Front
 
 ## Tecnologías utilizadas
