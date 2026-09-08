@@ -1,5 +1,6 @@
 import * as yup from "yup";
 import { Proveedor } from "../../../../interfaces/gestion-organizacion/proveedor/interfaces-proveedor";
+import { limpiarCuit } from "../../../herramientas/formateo-de-campos/cuit-input";
 
 //===================== interfaces para las cosas que se van a ingresar en el formulario y es necesario validarlas ==========//
 
@@ -28,7 +29,14 @@ export const schema = yup.object().shape({
 
   denominacionAfip: yup.string().optional().nullable().max(255, "Máximo 255 caracteres."),
   codigoProveedor: yup.string().optional().nullable(),
-  cuit: yup.string().required("El CUIT es obligatorio.").max(255, "Máximo 255 caracteres."),
+  cuit: yup
+    .string()
+    .required("El CUIT es obligatorio.")
+    .test(
+      "cuit-max-length",
+      "El CUIT no puede tener más de 11 dígitos.",
+      (value) => !value || limpiarCuit(value).length <= 11,
+    ),
   observacion: yup.string().optional().nullable(),
   condicionIvaId: yup.number().required("La Condicion Iva es obligatoria."),
   esProveedorGastos: yup.boolean().required(),
