@@ -22,14 +22,14 @@ import RegistrarActualizarMarcaForm from "../../marca/utils/registrar-actualizar
 import { ItemProveedor } from "../../../../interfaces/gestion-producto/producto/interfaces-item-proveedor";
 import { SelectSublinea } from "../../../../interfaces/gestion-producto/sublinea/interfaces-sublinea";
 import { ItemsProveedorEnPayload } from "../interfaces/interfaces-validaciones-item-proveedor";
-import { FormValues, schema, transformData, transformarItemsProdAlternativo } from "../interfaces/interfaces-validaciones-producto";
+import { FormValues, schema, sinCamposPrecioDerivados, transformData, transformarItemsProdAlternativo } from "../interfaces/interfaces-validaciones-producto";
 import LineasSelector from "../componentes/configuracion/lineas-selector";
 import EncabezadoFormularios from "../../../ui/encabezadoFormularios";
 import MarcasSelector from "../componentes/configuracion/marcas-selector";
 import { getUsuarioId } from "../../../../utils/auth";
 import RegistrarActualizarLineaForm from "../../linea/utils/registrar-actualizar-linea";
 import PorcentajeInput from "../../../herramientas/formateo-de-campos/porcentaje-input";
-
+import { calcularPrecioEstimado, MARGEN_GENERAL } from "./politica-precio";
 
 export default function RegistrarActualizarProductoForm({
   producto,
@@ -57,6 +57,7 @@ export default function RegistrarActualizarProductoForm({
       ? transformData(producto)
       : {
           alicuotaIva: AlicuotaIva.ALICUOTA_21,
+          margen: MARGEN_GENERAL,
         },
   });
 
@@ -90,6 +91,9 @@ export default function RegistrarActualizarProductoForm({
   const cantidadPorPack = watch("cantidadPorPack");
   const utilizaStockMinimo = watch("utilizaStockMinimo");
   const utilizaPack = watch("utilizaPack");
+  const costo = watch("costo") ?? 0;
+  const margen = watch("margen");
+  const precioEstimado = calcularPrecioEstimado(costo, margen);
   
 
   //=============================== CONSTANTES PARA MOVIMIENTO ENTRE CAMPOS ==================================
@@ -150,6 +154,7 @@ export default function RegistrarActualizarProductoForm({
           setValue("codigoBarra", producto.codigoBarra || null);
           setValue("stock", producto.stock || 0);
           setValue("costo", producto.costo || 0);
+          setValue("margen", producto.margen ?? null);
           
           //setValue("oferta", producto.oferta || false);
           setValue("alicuotaIva", producto.alicuotaIva || 0);
@@ -191,14 +196,14 @@ export default function RegistrarActualizarProductoForm({
 
       if (producto) {
         const payload = {
-          ...formData,
+          ...sinCamposPrecioDerivados(formData),
           usuarioUpdatedId: usuarioId,
         };
 
         response = await ProductoService.actualizar(producto.id, payload);
       } else {
         const payload = {
-          ...formData,
+          ...sinCamposPrecioDerivados(formData),
           usuarioCreatedId: usuarioId,
         };
 
@@ -371,21 +376,24 @@ export default function RegistrarActualizarProductoForm({
                     maxDigits={9}
                     disabled={producto && producto.sistema > 0 ? true : false}
                   />
-                  <PriceInput
-                    name="precio"
-                    label="Precio"
-                    value={watch("precio") || 0}
-                    onChange={(value) => setValue("precio", value, { shouldValidate: true })}
-                    maxDigits={9}
-                    disabled={producto && producto.sistema > 0 ? true : false}
-                  />
                   <PorcentajeInput
-                    name="porcentaje"
-                    label="Porcentaje"
-                    value={watch("porcentaje") || 0}
-                    onChange={(value) => setValue("porcentaje", value, { shouldValidate: true })}
+                    name="margen"
+                    label="Margen particular"
+                    value={margen ?? MARGEN_GENERAL}
+                    onChange={(value) => setValue("margen", value, { shouldValidate: true })}
                     disabled={producto && producto.sistema > 0 ? true : false}
                   />
+
+                  <div className="space-y-1 sm:space-y-2">
+                    <label className="label-base" htmlFor="precio-estimado">Precio de venta estimado</label>
+                    <output
+                      id="precio-estimado"
+                      className="block w-full text-right p-2 border border-gray-300 bg-gray-100 rounded-md text-black"
+                    >
+                      ${precioEstimado.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 5 })}
+                    </output>
+                    <small className="text-gray-500">Valor calculado en función del costo y margen.</small>
+                  </div>
 
                   
 
