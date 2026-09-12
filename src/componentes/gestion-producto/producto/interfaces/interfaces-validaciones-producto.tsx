@@ -15,8 +15,7 @@ export interface FormValues {
   codigoBarra?: string | null;
   stock?: number | null;
   costo?: number | null;
-  precio?: number | null;
-  porcentaje?: number | null;
+  margen?: number | null;
   /* costoEnDolar?: boolean | null;
   costoDolar?: number | null;
   destacado?: boolean | null;
@@ -48,6 +47,14 @@ export interface ItemsProveedorEnPayload {
   usuarioCreatedId: number;
 }
 
+export const sinCamposPrecioDerivados = (formData: FormValues): FormValues => {
+  const { precio: _precio, porcentaje: _porcentaje, ...payload } = formData as FormValues & {
+    precio?: number;
+    porcentaje?: number;
+  };
+  return payload;
+};
+
 //===================== schema de validacion ============================================//
 
 export const schema = (utilizaStockMinimo: boolean, utilizaPack: boolean, usaOferta: boolean) =>
@@ -65,12 +72,7 @@ export const schema = (utilizaStockMinimo: boolean, utilizaPack: boolean, usaOfe
     codigoBarra: yup.string().optional().max(255, "Máximo 255 caracteres.").nullable(),
     stock: yup.number().optional().nullable(),
     costo: yup.number().typeError("El costo debe ser un valor númerico").required("El costo es obligatorio").min(0,"El costo debe ser mayor o igual a 0"),
-    precio: yup.number().typeError("El precio debe ser un valor númerico").required("El precio es obligatorio").min(0,"El costo debe ser mayor o igual a 0").test("precio-mayor-o-igual-costo","El precio debe ser mayor o igual que el costo", function(value){
-      const {costo} = this.parent;
-      if (value==null || costo == null ) return true;
-      return value>= costo;
-    }),
-    porcentaje: yup.number().typeError("El porcentaje debe ser un valor númerico").min(0,"El porcentaje mínimo debe ser mayor o igual a 0").max(999, "El porcentaje máximo permitido es de 999").optional().nullable(),
+    margen: yup.number().typeError("El margen debe ser un valor numérico").min(0,"El margen debe ser mayor o igual a 0").optional().nullable(),
     /* costoEnDolar: yup.boolean().optional().nullable(),
     costoDolar: yup.number().optional().nullable(),
     destacado: yup.boolean().optional().nullable(),
@@ -164,8 +166,7 @@ export const transformData = (producto: Producto): FormValues => {
     codigoBarra: producto.codigoBarra ?? null,
     stock: producto.stock ?? null,
     costo: producto.costo ?? null,
-    precio: producto.precio ?? null,
-    porcentaje: producto.porcentaje ?? null,
+    margen: producto.margen ?? null,
    // oferta: producto.oferta ?? null,
     /* costoEnDolar: producto.costoEnDolar ?? null,
     costoDolar: producto.costoDolar ?? null,
