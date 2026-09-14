@@ -1,5 +1,6 @@
 import * as yup from "yup";
 import { Cliente } from "../../../../interfaces/gestion-organizacion/cliente/interfaces-cliente";
+import { limpiarCuit } from "../../../herramientas/formateo-de-campos/cuit-input";
 
 //===================== interfaces para las cosas que se van a ingresar en el formulario y es necesario validarlas ==========//
 
@@ -32,11 +33,18 @@ export const schema = (requiereCuit: boolean, requiereDocumento: boolean) =>
       .matches(/^[A-Za-z0-9 %-_"'áéíóúÁÉÍÓÚñÑ./]+$/, "Solo se permiten letras, números y espacios."),
 
     denominacionAfip: yup.string().optional().nullable().max(255, "Máximo 255 caracteres."),
-    cuit: yup.string().when([], {
-      is: () => requiereCuit,
-      then: (schema) => schema.required("El CUIT es obligatorio."),
-      otherwise: (schema) => schema.optional(),
-    }),
+    cuit: yup
+      .string()
+      .test(
+        "cuit-max-length",
+        "El CUIT no puede tener más de 11 dígitos.",
+        (value) => !value || limpiarCuit(value).length <= 11,
+      )
+      .when([], {
+        is: () => requiereCuit,
+        then: (schema) => schema.required("El CUIT es obligatorio."),
+        otherwise: (schema) => schema.optional(),
+      }),
     dni: yup.string().when([], {
       is: () => requiereDocumento,
       then: (schema) => schema.required("El DNI es obligatorio."),
