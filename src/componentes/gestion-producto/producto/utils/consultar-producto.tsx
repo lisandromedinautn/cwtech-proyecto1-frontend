@@ -30,8 +30,9 @@ import { DatosTabla } from "../componentes/datos-tabla";
 import { DatosCard } from "../componentes/datos-card";
 import { NotificacionModal } from "../../../NotificacionModal/modales/NotificacionModal";
 import { ProductoNotificacion, EntidadTipo } from "../../../NotificacionModal/interfaces/notificacion.types";
-import { getRoles, getUsuarioId } from "../../../../utils/auth";
+import { getAuthData, getRoles, getUsuarioId } from "../../../../utils/auth";
 import { puedeHacerAcciones } from "../domain/permisos-producto";
+import ProveedorService from "../../../gestion-organizacion/proveedor/services/proveedor-service";
 
 
 export default function ConsultarProductos() {
@@ -57,7 +58,7 @@ export default function ConsultarProductos() {
   const [auditoria, setAuditoria] = useState<Auditoria>({} as Auditoria);
   const isMounted = useRef(false);
   const inicializacionCompleta = useRef(false);
-
+  const { empresaId } = getAuthData();
   
    // =========================
     // PAGINACIÓN
@@ -197,10 +198,13 @@ export default function ConsultarProductos() {
         valoresFiltros.denominacionProveedor &&
         valoresFiltros.denominacionProveedor.length >= caracteresParaBusqueda
       ) {
-        const proveedoresTotales = await ProductoService.obtenerTotales(
-          { denominacion: valoresFiltros.denominacionProveedor || " " },
-          "proveedores"
-        );
+        const proveedoresTotales = await ProveedorService.obtener({
+          denominacion: valoresFiltros.denominacionProveedor || " ",
+          empresaId,
+          condicionIvaId: 0,
+          skip: 0,
+          take: 10,
+        });
         setProveedores(proveedoresTotales.data);
       }
     } catch (err: any) {
