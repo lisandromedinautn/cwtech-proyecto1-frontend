@@ -39,6 +39,7 @@ export default function ConsultarProductos() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mostrarActualizarProducto, setMostrarActualizarProducto] = useState(false);
+  const [mostrarAjusteStock, setMostrarAjusteStock] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState<Producto>({} as Producto);
   const [productoInfo, setProductoInfo] = useState<Producto>({} as Producto);
   const [mostrarInfoAuditoria, setMostrarInfoAuditoria] = useState(false);
@@ -224,6 +225,39 @@ export default function ConsultarProductos() {
   const handleCerrarActualizarProducto = () => {
     setMostrarActualizarProducto(false);
     setProductoSeleccionado({} as Producto); // Reset de la marca seleccionada
+  };
+
+  const handleAbrirAjusteStock = async (id: number) => {
+    try {
+      const producto = await ProductoService.obtenerId(id);
+      setProductoSeleccionado(producto);
+      setMostrarAjusteStock(true);
+    } catch (apiError) {
+      addAlert({
+        type: TipoAlerta.ERROR,
+        title: TituloAlerta.ERROR,
+        message: "No se pudo obtener el producto para ajustar el stock.",
+        autoClose: true,
+        duration: 3000,
+      });
+    }
+  };
+
+  const handleCerrarAjusteStock = () => {
+    setMostrarAjusteStock(false);
+    setProductoSeleccionado({} as Producto);
+  };
+
+  const handleAjusteStockSuccess = async (mensajeAlerta: string) => {
+    handleCerrarAjusteStock();
+    addAlert({
+      type: TipoAlerta.SUCCESS,
+      title: TituloAlerta.SUCCESS,
+      message: mensajeAlerta,
+      autoClose: true,
+      duration: 3000,
+    });
+    await handleBuscarProductos();
   };
 
   const handleDelete = async (id: number) => {
@@ -554,6 +588,7 @@ export default function ConsultarProductos() {
                   onEditar={handleAbrirActualizarProducto}
                   onInfo={handleMostrarInfo}
                   onDelete={handleDelete}
+                  onAjustarStock={handleAbrirAjusteStock}
                   onMovimientos={handleMostrarMovimientosStock}
                   onCambioPrecios={handleMostrarCambioPrecios}
                   onHistorial={handleMostrarHistorialPrecios}
@@ -572,6 +607,11 @@ export default function ConsultarProductos() {
                       onCambioPrecios={handleMostrarCambioPrecios}
                       onHistorial={handleMostrarHistorialPrecios}
                       onNotificar={handleNotificar}
+                      onAjustarStock={
+                        puedeHacerAcciones(getRoles())
+                          ? handleAbrirAjusteStock
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -600,6 +640,7 @@ export default function ConsultarProductos() {
       <ProductosModales
         isAltaOpen={isModalOpen}
         mostrarActualizarProducto={mostrarActualizarProducto}
+        mostrarAjusteStock={mostrarAjusteStock}
         mostrarInfoAuditoria={mostrarInfoAuditoria}
         mostrarMovimientosStock={mostrarMovimientosStock}
         mostrarHistorialPrecios={mostrarHistorialPrecios}
@@ -613,6 +654,7 @@ export default function ConsultarProductos() {
 
         onCloseAlta={closeModal}
         onCloseActualizar={handleCerrarActualizarProducto}
+        onCloseAjusteStock={handleCerrarAjusteStock}
         onCloseAuditoria={handleCerrarInfo}
         onCloseMovimientosStock={handleCerrarMovimientosStock}
         onCloseHistorialPrecios={handleCerrarHistorialPrecios}
@@ -622,6 +664,7 @@ export default function ConsultarProductos() {
 
         onSuccessAlta={handleSuccess}
         onSuccessActualizar={handleActualizarSuccess}
+        onSuccessAjusteStock={handleAjusteStockSuccess}
         onRefetch={handleBuscarProductos}
       />
 

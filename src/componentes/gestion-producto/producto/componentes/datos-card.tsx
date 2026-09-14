@@ -1,4 +1,4 @@
-import { Bell } from "lucide-react";
+import { Bell, PackagePlus } from "lucide-react";
 import type { ConsultarProducto } from "../../../../interfaces/gestion-producto/producto/interfaces-producto";
 import { formatPrice } from "../../../herramientas/formateo-de-campos/fucion-formateo";
 import { ActionButton } from "../../../herramientas/reutilizables/action-button";
@@ -15,6 +15,7 @@ interface Props {
   onCambioPrecios: (id: number) => void;
   onHistorial: (id: number) => void;
   onNotificar?: (producto: ConsultarProducto) => void;
+  onAjustarStock?: (id: number) => void;
 }
 
 export function DatosCard({
@@ -26,6 +27,7 @@ export function DatosCard({
   onCambioPrecios,
   onHistorial,
   onNotificar,
+  onAjustarStock,
 }: Props) {
   return (
     <div className="border border-gray-200 rounded-md bg-white px-3 py-3">
@@ -110,6 +112,16 @@ export function DatosCard({
           onClick={() => onNotificar(producto)}
         >
           <Bell size={16} />
+        </ActionButton>
+      )}
+
+      {onAjustarStock && (
+        <ActionButton
+          variant="edit"
+          title="Ajustar stock"
+          onClick={() => onAjustarStock(producto.id)}
+        >
+          <PackagePlus size={16} />
         </ActionButton>
       )}
 

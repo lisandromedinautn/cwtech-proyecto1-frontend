@@ -48,7 +48,7 @@ export interface ItemsProveedorEnPayload {
 }
 
 export const sinCamposPrecioDerivados = (formData: FormValues): FormValues => {
-  const { precio: _precio, porcentaje: _porcentaje, ...payload } = formData as FormValues & {
+  const { stock: _stock, precio: _precio, porcentaje: _porcentaje, ...payload } = formData as FormValues & {
     precio?: number;
     porcentaje?: number;
   };

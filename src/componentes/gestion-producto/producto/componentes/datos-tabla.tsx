@@ -11,6 +11,7 @@ interface Props {
   onEditar: (id: number) => void;
   onInfo: (id: number) => void;
   onDelete: (id: number) => void;
+  onAjustarStock: (id: number) => void;
   
 }
 
@@ -21,6 +22,7 @@ export function DatosTabla({
   onEditar,
   onInfo,
   onDelete,
+  onAjustarStock,
   ...actions
 }: Props) {
   return (
@@ -36,6 +38,7 @@ export function DatosTabla({
                   onEditar={onEditar}
                   onInfo={onInfo}
                   onDelete={onDelete}
+                  onAjustarStock={onAjustarStock}
                 />
               )
             : undefined

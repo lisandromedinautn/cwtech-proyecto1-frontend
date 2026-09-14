@@ -6,6 +6,7 @@ import {
   Layers,
   History,
   Bell,
+  PackagePlus,
 } from "lucide-react";
 import type { ConsultarProducto } from "../../../../interfaces/gestion-producto/producto/interfaces-producto";
 import { ActionButton } from "../../../herramientas/reutilizables/action-button";
@@ -17,6 +18,7 @@ interface Props {
   onEditar: (id: number) => void;
   onInfo: (id: number) => void;
   onDelete: (id: number) => void;
+  onAjustarStock: (id: number) => void;
 
   compact?: boolean;
 }
@@ -26,6 +28,7 @@ export function ProductoActions({
   onEditar,
   onInfo,
   onDelete,
+  onAjustarStock,
  
   compact = false,
 }: Props) {
@@ -37,6 +40,14 @@ export function ProductoActions({
         onClick={() => onInfo(producto.id)}
       >
         <Info size={16} />
+      </ActionButton>
+
+      <ActionButton
+        variant="edit"
+        title="Ajustar stock"
+        onClick={() => onAjustarStock(producto.id)}
+      >
+        <PackagePlus size={16} />
       </ActionButton>
 
       <ActionButton
