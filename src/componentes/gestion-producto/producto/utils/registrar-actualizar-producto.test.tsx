@@ -120,6 +120,7 @@ describe("RegistrarActualizarProductoForm", () => {
       }),
     );
     expect(ProductoService.nuevo.mock.calls[0][0]).not.toHaveProperty("precio");
+    expect(ProductoService.nuevo.mock.calls[0][0]).not.toHaveProperty("stock");
     expect(onSuccess).toHaveBeenCalledWith("Producto creado");
     expect(onClose).toHaveBeenCalled();
   });

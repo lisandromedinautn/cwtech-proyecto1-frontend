@@ -1,6 +1,7 @@
 import { Producto } from "../../../../interfaces/gestion-producto/producto/interfaces-producto";
 import InformacionAuditoria from "../../../herramientas/reutilizables/informacion-auditoria";
 import RegistrarActualizarProductoForm from "../utils/registrar-actualizar-producto";
+import AjustarStockManualModal from "./ajustar-stock-manual-modal";
 
 interface Props {
   isAltaOpen: boolean;
@@ -11,6 +12,7 @@ interface Props {
     mostrarCambioPrecios: boolean;
     mostrarProductosAlternativos: boolean;
     mostrarDeQuienEsAlternativo: boolean;
+    mostrarAjusteStock: boolean;
     productoSeleccionado: Producto | null;
     productoInfo: any;
     auditoria: any;
@@ -22,8 +24,10 @@ interface Props {
     onCloseCambioPrecios: () => void;
     onCloseProductosAlternativos: () => void;
     onCloseDeQuienEsAlternativo: () => void;
+    onCloseAjusteStock: () => void;
   onSuccessAlta: (mensaje: string, producto?: Producto) => void;
     onSuccessActualizar: (mensaje: string) => void;
+    onSuccessAjusteStock: (mensaje: string) => void;
     onRefetch: () => void;
 }
 
@@ -36,6 +40,7 @@ export function ProductosModales({
   mostrarCambioPrecios,
   mostrarProductosAlternativos,
   mostrarDeQuienEsAlternativo,
+  mostrarAjusteStock,
   productoSeleccionado,
   productoInfo,
   auditoria,
@@ -47,8 +52,10 @@ export function ProductosModales({
   onCloseCambioPrecios,
   onCloseProductosAlternativos,
   onCloseDeQuienEsAlternativo,
+  onCloseAjusteStock,
   onSuccessAlta,
   onSuccessActualizar,
+  onSuccessAjusteStock,
   onRefetch,
 }: Props) {
   return (
@@ -75,6 +82,16 @@ export function ProductosModales({
       {mostrarInfoAuditoria && auditoria && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <InformacionAuditoria auditoria={auditoria} onClose={onCloseAuditoria} />
+        </div>
+      )}
+
+      {mostrarAjusteStock && productoSeleccionado && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <AjustarStockManualModal
+            producto={productoSeleccionado}
+            onClose={onCloseAjusteStock}
+            onSuccess={onSuccessAjusteStock}
+          />
         </div>
       )}
 

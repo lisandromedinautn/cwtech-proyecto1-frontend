@@ -10,8 +10,17 @@ const apiUrl = axiosConfig.apiUrl;
 
 const baseService = createCrudService<FormValues>("producto");
 
+export interface AjusteStockManualPayload {
+  cantidad: number;
+  motivo: string;
+  usuarioId: number;
+}
+
 const ProductoService = {
   ...baseService,
+
+  ajustarStockManual: (id: number, payload: AjusteStockManualPayload) =>
+    ApiService.post(`/producto/${id}/ajustar-manual`, payload),
 
   
   obtenerMobile: async (filtros: any) => {
