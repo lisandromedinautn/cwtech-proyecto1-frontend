@@ -5,19 +5,9 @@ import { useFiltrosIniciales } from "../../../../hooks/useFiltrosIniciales";
 export function useProductoFiltros() {
   const [filtrosInicializados, setFiltrosInicializados] = useState(false);
   const filtrosInicialesConsultarProducto = useFiltrosIniciales("consultar-producto");
-  const {
-    setFiltrosNecesarios,
-    valoresFiltros,
-    setValoresFiltros,
-
-    limpiarFiltros,
-    buscar,
-    setBuscar,
-    setBusquedaRapida,
-  } = useFiltrosContext();
+  const { setFiltrosNecesarios, setValoresFiltros, setBuscar } = useFiltrosContext();
 
   useEffect(() => {
-    limpiarFiltros();
     setBuscar({ cont: 0, componente: "consultar-producto" });
     setFiltrosNecesarios({
       denominacion: true,
@@ -29,7 +19,7 @@ export function useProductoFiltros() {
     });
     setValoresFiltros(filtrosInicialesConsultarProducto);
     setFiltrosInicializados(true);
-  }, []);
+  }, [filtrosInicialesConsultarProducto, setBuscar, setFiltrosNecesarios, setValoresFiltros]);
 
-  return { filtrosInicializados: filtrosInicializados };
+  return { filtrosInicializados };
 }

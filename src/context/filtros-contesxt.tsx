@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import { FiltrosSideBar } from "../componentes/sidebarFiltros";
-import { FILTROS_INICIALES, TipoModuloFiltro } from "../config/filtros-iniciales";
+import {
+  getFiltrosInicialesPorModulo,
+  TipoModuloFiltro,
+} from "../config/filtros-iniciales";
 
 interface ValoresFiltros {
   denominacion?: string;
@@ -110,15 +113,17 @@ export const FiltrosProvider = ({ children }: { children: ReactNode }) => {
   });
   const [valoresFiltros, setValoresFiltros] = useState<ValoresFiltros>({});
 
-  
- const limpiarFiltros = () => {
-  const filtrosIniciales = FILTROS_INICIALES[buscar.componente as TipoModuloFiltro];
-  if (filtrosIniciales) {
-    setValoresFiltros(filtrosIniciales);
-  } else {
-    setValoresFiltros({});
-  }
-};
+   const limpiarFiltros = () => {
+    const modulo = buscar.componente as TipoModuloFiltro | undefined;
+    const filtrosIniciales = getFiltrosInicialesPorModulo(modulo);
+
+    if (filtrosIniciales) {
+      setValoresFiltros(filtrosIniciales);
+      return;
+    }
+
+    setValoresFiltros((prev) => ({ ...prev }));
+  };
 
 
   const [buscar, setBuscar] = useState<BuscarEnFiltros>({} as BuscarEnFiltros);
