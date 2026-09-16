@@ -24,7 +24,7 @@ vi.mock("../../../herramientas/formateo-de-campos/movimiento-campos", () => ({
 }));
 
 vi.mock("../../../herramientas/formateo-de-campos/form-input", () => ({
-  default: ({ name, label, disabled }: { name: string; label: string; disabled?: boolean }) => {
+  default: function MockFormInput({ name, label, disabled }: { name: string; label: string; disabled?: boolean }) {
     const { register, formState: { errors } } = useFormContext();
     return (
       <label>
