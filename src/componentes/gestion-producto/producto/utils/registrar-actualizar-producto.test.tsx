@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useFormContext } from "react-hook-form";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,11 +25,12 @@ vi.mock("../../../herramientas/formateo-de-campos/movimiento-campos", () => ({
 
 vi.mock("../../../herramientas/formateo-de-campos/form-input", () => ({
   default: ({ name, label, disabled }: { name: string; label: string; disabled?: boolean }) => {
-    const { register } = useFormContext();
+    const { register, formState: { errors } } = useFormContext();
     return (
       <label>
         {label}
         <input aria-label={label} disabled={disabled} {...register(name)} />
+        {errors[name]?.message && <span>{String(errors[name].message)}</span>}
       </label>
     );
   },
@@ -85,6 +86,7 @@ describe("RegistrarActualizarProductoForm", () => {
   });
 
   afterEach(() => {
+    cleanup();
     vi.clearAllMocks();
     vi.restoreAllMocks();
   });
@@ -123,5 +125,30 @@ describe("RegistrarActualizarProductoForm", () => {
     expect(ProductoService.nuevo.mock.calls[0][0]).not.toHaveProperty("stock");
     expect(onSuccess).toHaveBeenCalledWith("Producto creado");
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("mapea un detalle 400 del backend al campo del formulario", async () => {
+    const user = userEvent.setup();
+    vi.mocked(ProductoService.nuevo).mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          statusCode: 400,
+          code: "VALIDACION_DTO",
+          details: [{ field: "denominacion", reason: "La denominación ya existe." }],
+        },
+      },
+    });
+
+    render(<RegistrarActualizarProductoForm onClose={vi.fn()} onSuccess={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Denominación"), "Producto de prueba");
+    await user.clear(screen.getByLabelText("Costo"));
+    await user.type(screen.getByLabelText("Costo"), "100");
+    await user.click(screen.getByRole("button", { name: "Seleccionar línea" }));
+    await user.click(screen.getByRole("button", { name: "Seleccionar marca" }));
+    await user.click(screen.getByRole("button", { name: "Registrar" }));
+
+    expect(await screen.findByText("La denominación ya existe.")).toBeInTheDocument();
   });
 });
