@@ -23,6 +23,7 @@ export interface CambioPreciosMasivoDto {
   valor: number; // con signo: positivo = aumento, negativo = decremento
   alcance: "LINEA" | "GLOBAL";
   lineaId?: number; // obligatorio solo si alcance === "LINEA"
+  usuarioId?: number;
 }
 
 export function useCambioPrecios(usuarioId: number | null) {
@@ -57,16 +58,32 @@ export function useCambioPrecios(usuarioId: number | null) {
   ): Promise<PreviewResultado> => {
     setLoading(true);
     try {
-      const resultado: PreviewResultado =
+      const resultado: PreviewResultado | any =
         await CambioPreciosMasivoService.aplicarCambios(dto);
 
+      const items = Array.isArray(resultado)
+        ? resultado.map((item) => ({
+            productoId: item.productoId ?? item.id,
+            denominacion: item.denominacion,
+            precioActual: Number(item.precioActual ?? 0),
+            precioNuevo: item.precioNuevo ?? null,
+            valido: item.valido ?? true,
+          }))
+        : (resultado?.items ?? []);
+
+      const normalizado: PreviewResultado = {
+        items,
+        cantidadTotal: Number(resultado?.cantidadTotal ?? items.length),
+        cantidadInvalidos: Number(resultado?.cantidadInvalidos ?? items.filter((item) => !item.valido).length),
+      };
+
       const nuevoPreview = new Map<number, PreviewItem>();
-      resultado.items.forEach((item) => {
+      normalizado.items.forEach((item) => {
         nuevoPreview.set(item.productoId, item);
       });
       setPreview(nuevoPreview);
 
-      return resultado;
+      return normalizado;
     } finally {
       setLoading(false);
     }

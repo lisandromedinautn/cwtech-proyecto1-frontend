@@ -80,7 +80,6 @@ export default function CambioPreciosMasivo() {
   // Alcance derivado del filtro de línea activo: si hay lineaId, el ajuste
   // aplica solo a esa línea; si no, aplica a todos los productos (global).
   const alcance: "LINEA" | "GLOBAL" = valoresFiltros.lineaId ? "LINEA" : "GLOBAL";
-  console.log('lineaId actual:', valoresFiltros.lineaId, '→ alcance:', alcance);
 
   useEffect(() => {
     limpiarFiltros();
@@ -215,11 +214,12 @@ export default function CambioPreciosMasivo() {
   }, []);
 
   const construirDto = useCallback((): CambioPreciosMasivoDto => ({
-    tipo: tipoAjuste,
-    valor: valorAjuste,
+    tipo: Number(tipoAjuste),
+    valor: Number(valorAjuste),
     alcance,
-    lineaId: alcance === "LINEA" ? valoresFiltros.lineaId : undefined,
-  }), [tipoAjuste, valorAjuste, alcance, valoresFiltros.lineaId]);
+    lineaId: alcance === "LINEA" ? Number(valoresFiltros.lineaId) : undefined,
+    usuarioId: Number(usuarioId),
+  }), [tipoAjuste, valorAjuste, alcance, valoresFiltros.lineaId, usuarioId]);
 
   // Aplicar (check ✓): pide el preview al backend, calculado contra TODOS
   // los productos alcanzados por el filtro, no solo la página visible.
