@@ -8,11 +8,11 @@ import EmailInput from "../../../herramientas/formateo-de-campos/email-input";
 import { Card } from "../../../ui/Card";
 import React from "react";
 import { Cliente } from "../../../../interfaces/gestion-organizacion/cliente/interfaces-cliente";
-import DomicilioForm, { DatosDomicilio } from "../../../herramientas/reutilizables/domicilio";
+import DomicilioForm from "../../../herramientas/reutilizables/domicilio";
 import { FormValues, schema, transformData } from "../interfaces/interfaces-validaciones-cliente";
 import ClienteService from "../services/cliente-service";
 import Select from "react-select";
-import { parseApiError } from "../../../../utils/errores";
+import { applyApiErrorToForm } from "../../../../utils/errores";
 import PriceInput from "../../../herramientas/formateo-de-campos/price-input";
 import { User } from "lucide-react";
 import { SelectCondicionIva } from "../../../../interfaces/gestion-organizacion/condicion-iva/interfaces-condicion-iva";
@@ -29,10 +29,14 @@ export default function RegistrarActualizarClienteForm({
   cliente,
   onClose,
   onSuccess,
+  onNotify,
+  onRefresh,
 }: {
   cliente?: Cliente;
   onClose: () => void;
   onSuccess: (mensajeAlerta: string) => void;
+  onNotify?: (alert: { type: "error" | "warning"; title: string; message: string }) => void;
+  onRefresh?: () => Promise<void> | void;
 }) {
   //===================== CONSTANTES VARIAS ============================================
   const usuarioId = getUsuarioId();
@@ -46,7 +50,9 @@ export default function RegistrarActualizarClienteForm({
     resolver: yupResolver(
       schema(selectedCondicionIva?.requiereCuit || false, selectedCondicionIva?.requiereDocumento || false),
     ) as any,
-    defaultValues: cliente ? transformData(cliente) : {},
+    defaultValues: cliente
+      ? transformData(cliente)
+      : { domicilio: { direccion: "", provinciaId: 1, localidadId: 1 } },
   });
 
   const {
@@ -58,7 +64,6 @@ export default function RegistrarActualizarClienteForm({
   } = methods;
   const [condicionesIva, setCondicionesIva] = React.useState<SelectCondicionIva[]>([]);
   const [vendedores, setVendedores] = React.useState<SelectVendedor[]>([]);
-  const [datosDomicilio, setDatosDomicilio] = useState<DatosDomicilio>();
   const [denominacionCondicionIva, setDenominacionCondicionIva] = useState(" ");
   const [denominacionVendedor, setDenominacionVendedor] = useState(" ");
   const [selectedVendedor, setSelectedVendedor] = React.useState<SelectVendedor>();
@@ -148,7 +153,6 @@ export default function RegistrarActualizarClienteForm({
         const payload = {
           ...formData,
           cuit: cuitLimpio, // sobrescribimos con el limpio
-          domicilio: datosDomicilio,
           usuarioUpdatedId: usuarioId,
         };
 
@@ -159,7 +163,6 @@ export default function RegistrarActualizarClienteForm({
         const payload = {
           ...formData,
           cuit: cuitLimpio, // sobrescribimos con el limpio
-          domicilio: datosDomicilio,
           usuarioCreatedId: usuarioId,
         };
 
@@ -172,17 +175,9 @@ export default function RegistrarActualizarClienteForm({
     } catch (error) {
       console.error("Error al guardar el cliente:", error);
 
-      const errorMessage = parseApiError(error);
-
-      setError("root", {
-        type: "manual",
-        message: errorMessage,
-      });
+      const apiError = applyApiErrorToForm(error, setError, onNotify ?? (() => {}));
+      if (apiError.statusCode === 404) await onRefresh?.();
     }
-  };
-
-  const handleDomicilio = (datosDomicilio: DatosDomicilio) => {
-    setDatosDomicilio(datosDomicilio);
   };
 
   const handleBuscarPorDenominacion = async (select: string) => {
@@ -462,9 +457,8 @@ export default function RegistrarActualizarClienteForm({
                   </div>
                 </div>
                 <DomicilioForm
-                  onDatos={handleDomicilio}
-                  datosDomicilioExistentes={cliente?.domicilio}
                   sistema={cliente?.sistema}
+                  onNotify={onNotify}
                 />
                 <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4">
                   <EmailInput

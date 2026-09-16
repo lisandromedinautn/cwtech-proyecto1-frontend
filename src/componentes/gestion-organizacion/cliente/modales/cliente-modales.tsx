@@ -12,6 +12,8 @@ interface ClienteModalesProps {
   onClose: () => void;
   onSuccess: (mensaje: string, cliente?: Cliente) => void;
   onActualizarSuccess: (mensaje: string) => void;
+  onNotify: (alert: { type: "error" | "warning"; title: string; message: string }) => void;
+  onRefresh: () => Promise<void> | void;
 }
 
 export const ClienteModales = ({
@@ -21,6 +23,8 @@ export const ClienteModales = ({
   onClose,
   onSuccess,
   onActualizarSuccess,
+  onNotify,
+  onRefresh,
 }: ClienteModalesProps) => {
   if (!modalActivo) return null;
 
@@ -29,7 +33,7 @@ export const ClienteModales = ({
       {/* CREAR CLIENTE */}
       {modalActivo === "crear" && (
         <div className="relative p-6 sm:p-8 rounded-lg shadow-lg w-4/5 sm:w-3/5 md:w-2/3 lg:w-1/2 xl:w-2/5 max-w-full">
-          <RegistrarActualizarClienteForm onClose={onClose} onSuccess={onSuccess} />
+          <RegistrarActualizarClienteForm onClose={onClose} onSuccess={onSuccess} onNotify={onNotify} onRefresh={onRefresh} />
         </div>
       )}
 
@@ -40,6 +44,8 @@ export const ClienteModales = ({
             cliente={clienteSeleccionado}
             onClose={onClose}
             onSuccess={onActualizarSuccess}
+            onNotify={onNotify}
+            onRefresh={onRefresh}
           />
         </div>
       )}

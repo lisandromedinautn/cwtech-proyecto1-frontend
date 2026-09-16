@@ -29,6 +29,7 @@ interface Props {
     onSuccessActualizar: (mensaje: string) => void;
     onSuccessAjusteStock: (mensaje: string) => void;
     onRefetch: () => void;
+    onNotify: (alert: { type: "error" | "warning"; title: string; message: string }) => void;
 }
 
 export function ProductosModales({
@@ -57,6 +58,7 @@ export function ProductosModales({
   onSuccessActualizar,
   onSuccessAjusteStock,
   onRefetch,
+  onNotify,
 }: Props) {
   return (
     <>
@@ -65,6 +67,8 @@ export function ProductosModales({
           <RegistrarActualizarProductoForm
             onClose={onCloseAlta}
             onSuccess={onSuccessAlta}
+            onNotify={onNotify}
+            onRefresh={onRefetch}
           />
         </div>
       )}
@@ -75,6 +79,8 @@ export function ProductosModales({
             producto={productoSeleccionado}
             onClose={onCloseActualizar}
             onSuccess={onSuccessActualizar}
+            onNotify={onNotify}
+            onRefresh={onRefetch}
           />
         </div>
       )}
@@ -91,6 +97,8 @@ export function ProductosModales({
             producto={productoSeleccionado}
             onClose={onCloseAjusteStock}
             onSuccess={onSuccessAjusteStock}
+            onNotify={onNotify}
+            onRefresh={onRefetch}
           />
         </div>
       )}
