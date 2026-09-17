@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "../componentes/ui/Button";
 import { Card, CardContent, CardDescription, CardTitle } from "../componentes/ui/Card";
 import { Package, Phone, Mail, MapPin, Users, Truck, Wheat } from "lucide-react";
-import logo from "../assets/imagenes/Logo.png";
+import logo from "../assets/imagenes/cwtech-logo.webp";
 import { APP_CONFIG } from "../config/versionamiento";
 
 export default function HomePage() {
@@ -12,8 +12,8 @@ export default function HomePage() {
       <header className="sticky top-0 z-50 bg-white shadow-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <img src={logo} alt="Proyecto 1" className="h-12 w-auto" />
-            <span className="text-xl font-bold tracking-wide">NOMBRE AQUI</span>
+            <img src={logo} alt="Logo de CWTECH" className="h-12 w-auto" />
+            <span className="text-xl font-bold tracking-wide">CWTECH</span>
              <p className="text-xs text-gray-300 leading-tight">{APP_CONFIG.nombreSistema} {APP_CONFIG.version}</p>
           </div>
           <nav className="hidden md:flex space-x-6 font-medium">
@@ -61,7 +61,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="relative">
-            <img src={logo} alt="Proyecto 1" className="rounded-xl shadow-xl w-full max-w-md mx-auto" />
+            <img src={logo} alt="Logo de CWTECH" className="rounded-xl shadow-xl w-full max-w-md mx-auto" />
           </div>
         </div>
       </section>
