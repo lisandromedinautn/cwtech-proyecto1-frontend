@@ -33,6 +33,7 @@ import { ProductoNotificacion, EntidadTipo } from "../../../NotificacionModal/in
 import { getAuthData, getRoles, getUsuarioId } from "../../../../utils/auth";
 import { puedeHacerAcciones } from "../domain/permisos-producto";
 import ProveedorService from "../../../gestion-organizacion/proveedor/services/proveedor-service";
+import { getApiErrorCategory, getApiErrorMessage, normalizeApiError } from "../../../../utils/errores";
 
 
 export default function ConsultarProductos() {
@@ -287,14 +288,16 @@ export default function ConsultarProductos() {
         autoClose: true,
         duration: 3000,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const apiError = normalizeApiError(err);
       addAlert({
-        type: TipoAlerta.ERROR,
-        title: TituloAlerta.ERROR,
-        message: "No se puede eliminar este elemento porque está siendo utilizada por uno o más productos.",
+        type: getApiErrorCategory(apiError) === "not-found" ? TipoAlerta.WARNING : TipoAlerta.ERROR,
+        title: getApiErrorCategory(apiError) === "not-found" ? "Recurso inexistente" : TituloAlerta.ERROR,
+        message: getApiErrorMessage(apiError),
         autoClose: true,
         duration: 3000,
       });
+      if (apiError.statusCode === 404) await handleBuscarProductos();
     }
   };
 
@@ -670,6 +673,7 @@ export default function ConsultarProductos() {
         onSuccessActualizar={handleActualizarSuccess}
         onSuccessAjusteStock={handleAjusteStockSuccess}
         onRefetch={handleBuscarProductos}
+        onNotify={(alert) => addAlert({ ...alert, autoClose: true, duration: 3000 })}
       />
 
       {productoNotificacionSeleccionado && (

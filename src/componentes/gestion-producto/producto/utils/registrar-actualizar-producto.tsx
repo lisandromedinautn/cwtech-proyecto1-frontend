@@ -16,7 +16,7 @@ import { AlicuotaIva, ResponsePost } from "../../../../interfaces/generales/inte
 import Select from "react-select";
 import { useEnterFocus } from "../../../herramientas/formateo-de-campos/movimiento-campos";
 import { useConfiguracionSistema } from "../../../sistema/ConfiguracionSistemaContext";
-import { parseApiError } from "../../../../utils/errores";
+import { applyApiErrorToForm } from "../../../../utils/errores";
 import { Layers } from "lucide-react";
 import RegistrarActualizarMarcaForm from "../../marca/utils/registrar-actualizar-marca";
 import { ItemProveedor } from "../../../../interfaces/gestion-producto/producto/interfaces-item-proveedor";
@@ -35,10 +35,14 @@ export default function RegistrarActualizarProductoForm({
   producto,
   onClose,
   onSuccess,
+  onNotify,
+  onRefresh,
 }: {
   producto?: Producto;
   onClose: () => void;
   onSuccess: (mensajeAlerta: string) => void;
+  onNotify?: (alert: { type: "error" | "warning"; title: string; message: string }) => void;
+  onRefresh?: () => Promise<void> | void;
 }) {
   //===================== CONSTANTES VARIAS ============================================
   const usuarioId = getUsuarioId();
@@ -213,12 +217,8 @@ export default function RegistrarActualizarProductoForm({
       await onSuccess(response.mensaje);
       onClose();
     } catch (error) {
-      const errorMessage = parseApiError(error);
-
-      setError("root", {
-        type: "manual",
-        message: errorMessage,
-      });
+      const apiError = applyApiErrorToForm(error, setError, onNotify ?? (() => {}));
+      if (apiError.statusCode === 404) await onRefresh?.();
     }
   };
 

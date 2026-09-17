@@ -50,9 +50,11 @@ describe("AjustarStockManualModal", () => {
 
   it("muestra el conflicto informado por el backend", async () => {
     const user = userEvent.setup();
+    const onNotify = vi.fn();
     vi.mocked(ProductoService.ajustarStockManual).mockRejectedValue({
       response: {
-        data: { message: "El stock no puede quedar negativo" },
+        status: 409,
+        data: { statusCode: 409, code: "STOCK_NEGATIVO", message: "El stock no puede quedar negativo" },
       },
     });
 
@@ -61,6 +63,7 @@ describe("AjustarStockManualModal", () => {
         producto={{ id: 3, denominacion: "Producto de prueba", stock: 10 } as any}
         onClose={vi.fn()}
         onSuccess={vi.fn()}
+        onNotify={onNotify}
       />,
     );
 
@@ -69,7 +72,12 @@ describe("AjustarStockManualModal", () => {
     await user.click(screen.getByRole("button", { name: "Confirmar ajuste" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "El stock no puede quedar negativo",
+      "No hay stock suficiente para este ajuste.",
     );
+    expect(onNotify).toHaveBeenCalledWith({
+      type: "error",
+      title: "Conflicto",
+      message: "No hay stock suficiente para este ajuste.",
+    });
   });
 });

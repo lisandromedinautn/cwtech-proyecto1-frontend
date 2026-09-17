@@ -23,6 +23,7 @@ import ClienteService from "../services/cliente-service";
 import { FiltrosCliente, FiltrosClienteValues } from "../componentes/filtros-cliente";
 import { ColumnasImprimir } from "../../../herramientas/reutilizables/columnas-imprimir";
 import { CabeceraDocumentoProvider } from "../../../../context/cabecera-documento-provider";
+import { getApiErrorCategory, getApiErrorMessage, normalizeApiError } from "../../../../utils/errores";
 
 // =========================
 // COMPONENTE
@@ -230,13 +231,15 @@ export default function ConsultarClientes() {
         message: mensaje,
         autoClose: true,
       });
-    } catch {
+    } catch (error) {
+      const apiError = normalizeApiError(error);
       addAlert({
-        type: "error",
-        title: "Error",
-        message: "No se pudo eliminar el cliente.",
+        type: getApiErrorCategory(apiError) === "not-found" ? "warning" : "error",
+        title: getApiErrorCategory(apiError) === "not-found" ? "Recurso inexistente" : "Error",
+        message: getApiErrorMessage(apiError),
         autoClose: true,
       });
+      if (apiError.statusCode === 404) await handleBuscarClientes();
     }
   };
 
@@ -367,6 +370,8 @@ export default function ConsultarClientes() {
             }}
             onSuccess={handleSuccess}
             onActualizarSuccess={handleSuccess}
+            onNotify={(alert) => addAlert({ ...alert, autoClose: true })}
+            onRefresh={handleBuscarClientes}
           />
       </CabeceraDocumentoProvider>
 

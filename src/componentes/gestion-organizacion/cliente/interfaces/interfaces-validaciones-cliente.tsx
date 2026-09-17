@@ -17,6 +17,11 @@ export interface FormValues {
   observacion?: string | null;
   condicionIvaId: number;
   vendedorId: number;
+  domicilio: {
+    direccion: string;
+    provinciaId: number;
+    localidadId: number;
+  };
 }
 
 //===================== schema de validacion ============================================//
@@ -81,6 +86,11 @@ export const schema = (requiereCuit: boolean, requiereDocumento: boolean) =>
       .matches(/^[0-9\s\-+()]*$/, "Solo se permiten números, espacios y caracteres: - + ( )"),
     condicionIvaId: yup.number().required("La condicion de iva es obligatoria."),
     vendedorId: yup.number().required("El vendedor es obligatorio."),
+    domicilio: yup.object({
+      direccion: yup.string().required("Campo requerido"),
+      localidadId: yup.number().typeError("Campo requerido").required(),
+      provinciaId: yup.number().typeError("Campo requerido").required(),
+    }).required(),
   });
 
 //===================== transform data ============================================//
@@ -99,5 +109,10 @@ export const transformData = (cliente: Cliente): FormValues => {
     condicionIvaId: cliente.condicionIva.id,
     vendedorId: cliente.vendedor.id,
     observacion: cliente.observacion ?? null,
+    domicilio: {
+      direccion: cliente.domicilio?.direccion ?? "",
+      provinciaId: cliente.domicilio?.provinciaId ?? 1,
+      localidadId: cliente.domicilio?.localidadId ?? 1,
+    },
   };
 };
