@@ -56,6 +56,9 @@ export const menuItems: MenuItem[] = [
         icon: ShoppingBag,
         label: "Producto",
         path: "producto",
+        subMenu: [ 
+          { icon: DollarSign, label: "Cambio de Precios Masivo", path: "cambio-precios-masivo" },
+        ],
         roles: [Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.REPARTIDOR, Rol.REPOSITOR,Rol.ROOT],
       },
       {
