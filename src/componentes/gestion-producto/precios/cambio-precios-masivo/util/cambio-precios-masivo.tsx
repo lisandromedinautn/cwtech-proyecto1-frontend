@@ -37,6 +37,7 @@ export default function CambioPreciosMasivo() {
   const [tipoAjuste, setTipoAjuste] = useState<number>(TIPO_PORCENTAJE);
   const [valorAjuste, setValorAjuste] = useState<number>(0);
   const [seleccionTodoActivo, setSeleccionTodoActivo] = useState(false);
+  const [alcance, setAlcance] = useState<"" | "LINEA" | "GLOBAL">("");
 
   const usuarioId = getUsuarioId();
   const { configuracion } = useConfiguracionSistema();
@@ -76,10 +77,6 @@ export default function CambioPreciosMasivo() {
   const [filtrosAplicados, setFiltrosAplicados] = useState<any | null>(null);
 
   const { lineas, setLineas } = useCatalogosContext();
-
-  // Alcance derivado del filtro de línea activo: si hay lineaId, el ajuste
-  // aplica solo a esa línea; si no, aplica a todos los productos (global).
-  const alcance: "LINEA" | "GLOBAL" = valoresFiltros.lineaId ? "LINEA" : "GLOBAL";
 
   useEffect(() => {
     limpiarFiltros();
@@ -167,13 +164,36 @@ export default function CambioPreciosMasivo() {
     setFiltrosAplicados(null);
     resetearPaginacion();
     setSeleccionTodoActivo(false);
+    setAlcance("");
     setValorAjuste(0);
     limpiarPreview();
   }, [setValoresFiltros, setLineas, setProductos, resetearPaginacion, limpiarPreview]);
 
   const handleBuscarProductos = useCallback(() => {
+    if (!alcance) {
+      addAlert({
+        type: TipoAlerta.WARNING,
+        title: TituloAlerta.WARNING,
+        message: "Seleccioná el alcance de la modificación antes de buscar.",
+        autoClose: true,
+        duration: 3000,
+      });
+      return;
+    }
+
+    if (alcance === "LINEA" && !valoresFiltros.lineaId) {
+      addAlert({
+        type: TipoAlerta.WARNING,
+        title: TituloAlerta.WARNING,
+        message: "Seleccioná una línea para buscar sus productos.",
+        autoClose: true,
+        duration: 3000,
+      });
+      return;
+    }
+
     const filtros = {
-      lineaId: valoresFiltros.lineaId,
+      lineaId: alcance === "LINEA" ? valoresFiltros.lineaId : undefined,
     };
 
     resetearPaginacion();
@@ -183,7 +203,26 @@ export default function CambioPreciosMasivo() {
     // Cambiar el filtro invalida cualquier selección/preview previo
     setSeleccionTodoActivo(false);
     limpiarPreview();
-  }, [valoresFiltros.lineaId, resetearPaginacion, buscarProductos, take, limpiarPreview]);
+  }, [alcance, valoresFiltros.lineaId, addAlert, resetearPaginacion, buscarProductos, take, limpiarPreview]);
+
+  const handleCambiarAlcance = useCallback((nuevoAlcance: "" | "LINEA" | "GLOBAL") => {
+    setAlcance(nuevoAlcance);
+    setSeleccionTodoActivo(false);
+    limpiarPreview();
+    resetearPaginacion();
+
+    if (nuevoAlcance === "GLOBAL") {
+      const filtros = { lineaId: undefined };
+      setValoresFiltros({ denominacionLinea: "", lineaId: undefined });
+      setLineas([]);
+      setFiltrosAplicados(filtros);
+      buscarProductos(filtros, 0, take);
+      return;
+    }
+
+    setProductos([]);
+    setFiltrosAplicados(null);
+  }, [buscarProductos, limpiarPreview, resetearPaginacion, setLineas, setProductos, setValoresFiltros, take]);
 
   useEffect(() => {
     if (filtrosAplicados) {
@@ -450,6 +489,7 @@ export default function CambioPreciosMasivo() {
                 valorAjuste={valorAjuste}
                 setValorAjuste={setValorAjuste}
                 alcance={alcance}
+                setAlcance={handleCambiarAlcance}
                 seleccionTodoActivo={seleccionTodoActivo}
                 onSeleccionarTodo={handleSeleccionarTodo}
                 onAplicarCambios={handleAplicarCambios}
