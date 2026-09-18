@@ -2,6 +2,7 @@ import { Producto } from "../../../../interfaces/gestion-producto/producto/inter
 import InformacionAuditoria from "../../../herramientas/reutilizables/informacion-auditoria";
 import RegistrarActualizarProductoForm from "../utils/registrar-actualizar-producto";
 import AjustarStockManualModal from "./ajustar-stock-manual-modal";
+import HistorialPreciosModal from "./historial-precios-modal";
 
 interface Props {
   isAltaOpen: boolean;
@@ -14,6 +15,7 @@ interface Props {
     mostrarDeQuienEsAlternativo: boolean;
     mostrarAjusteStock: boolean;
     productoSeleccionado: Producto | null;
+    productoHistorial: { id: number; denominacion: string } | null;
     productoInfo: any;
     auditoria: any;
   onCloseAlta: () => void;
@@ -43,6 +45,7 @@ export function ProductosModales({
   mostrarDeQuienEsAlternativo,
   mostrarAjusteStock,
   productoSeleccionado,
+  productoHistorial,
   productoInfo,
   auditoria,
   onCloseAlta,
@@ -103,7 +106,11 @@ export function ProductosModales({
         </div>
       )}
 
-
+      {mostrarHistorialPrecios && productoHistorial && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <HistorialPreciosModal producto={productoHistorial} onClose={onCloseHistorialPrecios} />
+        </div>
+      )}
     </>
   );
 }
