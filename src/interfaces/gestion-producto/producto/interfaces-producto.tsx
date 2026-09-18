@@ -92,6 +92,7 @@ export interface ConsultarProductosCambioPreciosMasivo {
   denominacion: string;
   codigoProveedor: string;
   observacion: string;
+  precio: number;
 
   precioOcasionalConIva: number;
   precioOcasionalConIvaNuevo: number;

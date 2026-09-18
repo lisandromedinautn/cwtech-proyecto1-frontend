@@ -1,41 +1,46 @@
 import { Search, Package, Check, Save, Eraser } from "lucide-react";
-import { useState } from "react";
 import Select from "react-select";
 import { CardHeader, CardTitle } from "../../../../ui/Card";
 import { Input } from "../../../../ui/Input";
 import { Button } from "../../../../ui/Button";
-import PorcentajeInput from "../../../../herramientas/formateo-de-campos/porcentaje-input-simple";
 
 type Props = { 
     valoresFiltros: any; 
     setValoresFiltros: any; 
-    marcas: any[]; 
     lineas: any[]; 
-    sublineas: any[]; 
     productosLength: number; 
     onBuscar: () => void; 
-    onAplicarCambios: (porcentaje: number) => void; 
     onGuardarCambios: () => void; 
-    fetchMarcas: () => void;
     fetchLineas: () => void;
     onLimpiarFiltros: () => void;
+    tipoAjuste: number;
+    setTipoAjuste: (tipo: number) => void;
+    valorAjuste: number;
+    setValorAjuste: (valor: number) => void;
+    alcance: "LINEA" | "GLOBAL";
+    seleccionTodoActivo: boolean;
+    onSeleccionarTodo: () => void;
+    onAplicarCambios: () => void;
 };
 
 export default function FiltrosCambioPrecios({
   valoresFiltros,
   setValoresFiltros,
-  marcas,
   lineas,
-  sublineas,
   productosLength,
   onBuscar,
-  onAplicarCambios,
   onGuardarCambios,
-  fetchMarcas,
   fetchLineas,
-  onLimpiarFiltros
+  onLimpiarFiltros,
+  tipoAjuste,
+  setTipoAjuste,
+  valorAjuste,
+  setValorAjuste,
+  alcance,
+  seleccionTodoActivo,
+  onSeleccionarTodo,
+  onAplicarCambios,
 }: Props) {
-  const [porcentaje, setPorcentaje] = useState<number>(0);
   return (
     <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4">
                 {/* Filtros y estadísticas */}
@@ -47,65 +52,6 @@ export default function FiltrosCambioPrecios({
                   </CardTitle>
 
                   <div className="flex items-center gap-2">
-                    <div className="space-y-3">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <Input
-                          type="text"
-                          placeholder="Denominación..."
-                          className="pl-10 bg-white dark:bg-slate-600 border-gray-300 dark:border-slate-500 focus:border-blue-500 focus:ring-blue-500"
-                          value={valoresFiltros.denominacionMarca}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              fetchMarcas();
-                            }
-                          }}
-                          onChange={(e) =>
-                            setValoresFiltros({
-                              ...valoresFiltros,
-                              denominacionMarca: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Select
-                          value={(marcas ?? []).find((option) => option.id === valoresFiltros.marcaId) || null}
-                          options={marcas ?? []}
-                          getOptionLabel={(option) => option.denominacion}
-                          getOptionValue={(option) => String(option.id)}
-                          onChange={(option) =>
-                            setValoresFiltros({
-                              ...valoresFiltros,
-                              marcaId: option ? option.id : undefined,
-                            })
-                          }
-                          placeholder="Seleccione una marca"
-                          className="text-black"
-                          menuPortalTarget={document.body}
-                          styles={{
-                            control: (base) => ({
-                              ...base,
-                              color: "black",
-                            }),
-                            singleValue: (base) => ({
-                              ...base,
-                              color: "black",
-                            }),
-                            option: (base, { isSelected, isFocused }) => ({
-                              ...base,
-                              color: isSelected ? "white" : "black",
-                              backgroundColor: isSelected ? "#3b82f6" : isFocused ? "#93c5fd" : "white",
-                            }),
-                            menuPortal: (base) => ({
-                              ...base,
-                              zIndex: 9999,
-                            }),
-                          }}
-                        />
-                      </div>
-                    </div>
-
                     <div className="space-y-3">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -163,45 +109,6 @@ export default function FiltrosCambioPrecios({
                           }}
                         />
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 mt-14">
-                    <div>
-                      <Select
-                        value={(sublineas ?? []).find((option) => option.id === valoresFiltros.sublineaId) || null}
-                        options={sublineas ?? []}
-                        getOptionLabel={(option) => option.denominacion}
-                        getOptionValue={(option) => String(option.id)}
-                        onChange={(option) =>
-                          setValoresFiltros({
-                            ...valoresFiltros,
-                            sublineaId: option ? option.id : undefined,
-                          })
-                        }
-                        placeholder="Seleccione una sublínea"
-                        className="text-black"
-                        menuPortalTarget={document.body}
-                        styles={{
-                          control: (base) => ({
-                            ...base,
-                            color: "black",
-                          }),
-                          singleValue: (base) => ({
-                            ...base,
-                            color: "black",
-                          }),
-                          option: (base, { isSelected, isFocused }) => ({
-                            ...base,
-                            color: isSelected ? "white" : "black",
-                            backgroundColor: isSelected ? "#3b82f6" : isFocused ? "#93c5fd" : "white",
-                          }),
-                          menuPortal: (base) => ({
-                            ...base,
-                            zIndex: 9999,
-                          }),
-                        }}
-                      />
                     </div>
                   </div>
 
@@ -267,17 +174,55 @@ export default function FiltrosCambioPrecios({
                     </Button>
 
                     
-                    <PorcentajeInput
-                      name="porcentaje"
-                      value={porcentaje}
-                      label="Porcentaje"
-                      onChange={(value) => setPorcentaje(value)}
+                    <select
+                      value={tipoAjuste}
+                      onChange={(event) => setTipoAjuste(Number(event.target.value))}
                       disabled={productosLength === 0}
+                      className="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-black dark:border-slate-500 dark:bg-slate-600"
+                      aria-label="Tipo de ajuste"
+                    >
+                      <option value={1}>Porcentaje</option>
+                      <option value={2}>Monto fijo</option>
+                    </select>
+
+                    <Input
+                      type="number"
+                      value={valorAjuste === 0 ? "" : valorAjuste}
+                      onChange={(event) => {
+                        const raw = event.target.value;
+                        if (raw === "") {
+                          setValorAjuste(0);
+                          return;
+                        }
+                        const val = Number(raw);
+                        if (tipoAjuste === 1 && Math.abs(val) > 100) {
+                          return;
+                        }
+                        setValorAjuste(val);
+                      }}
+                      disabled={productosLength === 0}
+                      placeholder={tipoAjuste === 1 ? "Porcentaje" : "Monto"}
+                      aria-label={tipoAjuste === 1 ? "Porcentaje de ajuste" : "Monto de ajuste"}
+                      className="w-32 bg-white dark:bg-slate-600"
                     />
+
+                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                      Alcance: {alcance === "LINEA" ? "Línea" : "Global"}
+                    </span>
 
                     <Button
                       variant="outline"
-                      onClick={() => onAplicarCambios(porcentaje)}
+                      onClick={onSeleccionarTodo}
+                      disabled={productosLength === 0}
+                      className={seleccionTodoActivo ? "bg-green-600 text-white" : "bg-blue-500 text-white hover:bg-blue-800"}
+                      title="Seleccionar todos los productos del alcance"
+                    >
+                      {seleccionTodoActivo ? "✓ Seleccionado" : "Seleccionar todo"}
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={onAplicarCambios}
                       className={`self-end ${
                         productosLength === 0
                           ? "bg-gray-400 text-gray-600 cursor-not-allowed"
