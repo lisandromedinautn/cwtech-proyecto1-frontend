@@ -22,24 +22,31 @@ Copiar y completar. Los campos vacíos se dejan como `—`, no se borran.
 - **Link a la conversación:** URL, o "no disponible (CLI)"
 
 ### Prompt
+
 Transcripción del pedido (o su síntesis fiel si fue largo — indicar si está resumido).
 
 ### Respuesta / propuesta de la IA
+
 Qué propuso, en qué alternativas se abrió.
 
 ### Decisión tomada
+
 Qué se aceptó y qué se implementó realmente.
 
 ### Qué se descartó y por qué
+
 Lo más importante de la entrada. Alternativas evaluadas y motivo del rechazo.
 
 ### Modificaciones sobre lo generado
+
 Qué hubo que corregir, ajustar o reescribir a mano.
 
 ### Impacto
+
 Archivos, migraciones, endpoints, tests tocados.
 
 ### Verificación
+
 Cómo se comprobó que funciona. Qué quedó **sin** verificar.
 ```
 
