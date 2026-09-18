@@ -19,9 +19,8 @@ type Props = {
     setValorAjuste: (valor: number) => void;
     alcance: "" | "LINEA" | "GLOBAL";
     setAlcance: (alcance: "" | "LINEA" | "GLOBAL") => void;
-    seleccionTodoActivo: boolean;
-    onSeleccionarTodo: () => void;
     onAplicarCambios: () => void;
+    puedeGuardarCambios: boolean;
 };
 
 export default function FiltrosCambioPrecios({
@@ -39,9 +38,8 @@ export default function FiltrosCambioPrecios({
   setValorAjuste,
   alcance,
   setAlcance,
-  seleccionTodoActivo,
-  onSeleccionarTodo,
   onAplicarCambios,
+  puedeGuardarCambios,
 }: Props) {
   return (
     <CardHeader className="flex flex-col gap-5 p-4">
@@ -150,15 +148,6 @@ export default function FiltrosCambioPrecios({
           </div>
           <Button
             variant="outline"
-            onClick={onSeleccionarTodo}
-            disabled={productosLength === 0}
-            className={seleccionTodoActivo ? "bg-green-600 text-white" : "bg-blue-500 text-white hover:bg-blue-800"}
-            title="Seleccionar todos los productos del alcance"
-          >
-            {seleccionTodoActivo ? "✓ Seleccionado" : "Seleccionar todo"}
-          </Button>
-          <Button
-            variant="outline"
             onClick={onAplicarCambios}
             className={productosLength === 0 ? "bg-gray-400 text-gray-600 cursor-not-allowed" : "bg-blue-500 text-white hover:bg-blue-800"}
             title="Previsualizar cambios"
@@ -171,7 +160,7 @@ export default function FiltrosCambioPrecios({
             onClick={onGuardarCambios}
             className="bg-blue-500 text-white hover:bg-blue-800"
             title="Guardar cambios"
-            disabled={productosLength === 0}
+            disabled={!puedeGuardarCambios}
           >
             <Save className="mr-2 h-4 w-4" /> Guardar cambios
           </Button>

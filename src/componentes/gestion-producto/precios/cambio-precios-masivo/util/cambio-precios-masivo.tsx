@@ -36,7 +36,7 @@ export default function CambioPreciosMasivo() {
   // ── Estados del ajuste masivo de precios ──
   const [tipoAjuste, setTipoAjuste] = useState<number>(TIPO_PORCENTAJE);
   const [valorAjuste, setValorAjuste] = useState<number>(0);
-  const [seleccionTodoActivo, setSeleccionTodoActivo] = useState(false);
+  const [previsualizacionLista, setPrevisualizacionLista] = useState(false);
   const [alcance, setAlcance] = useState<"" | "LINEA" | "GLOBAL">("");
 
   const usuarioId = getUsuarioId();
@@ -163,7 +163,7 @@ export default function CambioPreciosMasivo() {
     setProductos([]);
     setFiltrosAplicados(null);
     resetearPaginacion();
-    setSeleccionTodoActivo(false);
+    setPrevisualizacionLista(false);
     setAlcance("");
     setValorAjuste(0);
     limpiarPreview();
@@ -200,14 +200,14 @@ export default function CambioPreciosMasivo() {
     setFiltrosAplicados(filtros);
     buscarProductos(filtros, 0, take);
 
-    // Cambiar el filtro invalida cualquier selección/preview previo
-    setSeleccionTodoActivo(false);
+    // Cambiar el filtro invalida cualquier previsualización previa.
+    setPrevisualizacionLista(false);
     limpiarPreview();
   }, [alcance, valoresFiltros.lineaId, addAlert, resetearPaginacion, buscarProductos, take, limpiarPreview]);
 
   const handleCambiarAlcance = useCallback((nuevoAlcance: "" | "LINEA" | "GLOBAL") => {
     setAlcance(nuevoAlcance);
-    setSeleccionTodoActivo(false);
+    setPrevisualizacionLista(false);
     limpiarPreview();
     resetearPaginacion();
 
@@ -245,12 +245,17 @@ export default function CambioPreciosMasivo() {
     [addAlert, actualizarProductoLocal]
   );
 
-  // "Seleccionar todo" no arma una lista de ids: el alcance ya se deriva
-  // del filtro de línea activo (o "global" si no hay línea elegida). Este
-  // botón solo confirma la intención de aplicar el ajuste a ese alcance.
-  const handleSeleccionarTodo = useCallback(() => {
-    setSeleccionTodoActivo(true);
-  }, []);
+  const handleCambiarTipoAjuste = useCallback((tipo: number) => {
+    setTipoAjuste(tipo);
+    setPrevisualizacionLista(false);
+    limpiarPreview();
+  }, [limpiarPreview]);
+
+  const handleCambiarValorAjuste = useCallback((valor: number) => {
+    setValorAjuste(valor);
+    setPrevisualizacionLista(false);
+    limpiarPreview();
+  }, [limpiarPreview]);
 
   const construirDto = useCallback((): CambioPreciosMasivoDto => ({
     tipo: Number(tipoAjuste),
@@ -260,20 +265,9 @@ export default function CambioPreciosMasivo() {
     usuarioId: Number(usuarioId),
   }), [tipoAjuste, valorAjuste, alcance, valoresFiltros.lineaId, usuarioId]);
 
-  // Aplicar (check ✓): pide el preview al backend, calculado contra TODOS
+  // Pide el preview al backend, calculado contra TODOS
   // los productos alcanzados por el filtro, no solo la página visible.
   const handleAplicarCambios = useCallback(async () => {
-    if (!seleccionTodoActivo) {
-      addAlert({
-        type: TipoAlerta.WARNING,
-        title: TituloAlerta.WARNING,
-        message: "Primero tocá 'Seleccionar todo' para confirmar el alcance del ajuste.",
-        autoClose: true,
-        duration: 3000,
-      });
-      return;
-    }
-
     if (!valorAjuste) {
       addAlert({
         type: TipoAlerta.WARNING,
@@ -284,6 +278,8 @@ export default function CambioPreciosMasivo() {
       });
       return;
     }
+
+    setPrevisualizacionLista(false);
 
     try {
       const resultado = await aplicarCambios(construirDto());
@@ -297,6 +293,7 @@ export default function CambioPreciosMasivo() {
           duration: 6000,
         });
       } else {
+        setPrevisualizacionLista(true);
         addAlert({
           type: TipoAlerta.SUCCESS,
           title: TituloAlerta.SUCCESS,
@@ -314,16 +311,15 @@ export default function CambioPreciosMasivo() {
         duration: 4000,
       });
     }
-  }, [seleccionTodoActivo, valorAjuste, aplicarCambios, construirDto, addAlert]);
+  }, [valorAjuste, aplicarCambios, construirDto, addAlert]);
 
-  // Guardar (disco): confirma la operación. El backend recalcula todo
-  // server-side y persiste dentro de una transacción (todo o nada).
+  // Guardar confirma la operación y el backend recalcula el ajuste solicitado.
   const handleGuardarCambios = useCallback(async () => {
-    if (!seleccionTodoActivo) {
+    if (!previsualizacionLista) {
       addAlert({
         type: TipoAlerta.WARNING,
         title: TituloAlerta.WARNING,
-        message: "Primero aplicá el ajuste con el botón de previsualización.",
+        message: "Primero generá una previsualización válida del ajuste.",
         autoClose: true,
         duration: 3000,
       });
@@ -353,7 +349,7 @@ export default function CambioPreciosMasivo() {
         duration: 3000,
       });
 
-      setSeleccionTodoActivo(false);
+      setPrevisualizacionLista(false);
       setValorAjuste(0);
 
       // Refrescar la tabla para reflejar los precios ya persistidos
@@ -372,7 +368,7 @@ export default function CambioPreciosMasivo() {
       });
     }
   }, [
-    seleccionTodoActivo,
+    previsualizacionLista,
     alcance,
     showConfirmation,
     guardarCambios,
@@ -485,14 +481,13 @@ export default function CambioPreciosMasivo() {
                 onLimpiarFiltros={handleLimpiarFiltros}
                 // ── Props nuevas para el ajuste masivo ──
                 tipoAjuste={tipoAjuste}
-                setTipoAjuste={setTipoAjuste}
+                setTipoAjuste={handleCambiarTipoAjuste}
                 valorAjuste={valorAjuste}
-                setValorAjuste={setValorAjuste}
+                setValorAjuste={handleCambiarValorAjuste}
                 alcance={alcance}
                 setAlcance={handleCambiarAlcance}
-                seleccionTodoActivo={seleccionTodoActivo}
-                onSeleccionarTodo={handleSeleccionarTodo}
                 onAplicarCambios={handleAplicarCambios}
+                puedeGuardarCambios={previsualizacionLista}
                 onGuardarCambios={handleGuardarCambios}
               />
               <CardContent className="p-0">
