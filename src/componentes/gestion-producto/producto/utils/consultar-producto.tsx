@@ -47,6 +47,7 @@ export default function ConsultarProductos() {
   const [mostrarInfoAuditoria, setMostrarInfoAuditoria] = useState(false);
   const [mostrarMovimientosStock, setMostrarMovimientosStock] = useState(false);
   const [mostrarHistorialPrecios, setMostrarHistorialPrecios] = useState(false);
+  const [productoHistorial, setProductoHistorial] = useState<{ id: number; denominacion: string } | null>(null);
   const [mostrarCambioPrecios, setMostrarCambioPrecios] = useState(false);
   const [mostrarProductosAlternativos, setMostrarProductosAlternativos] = useState(false);
   const [mostrarDeQuienEsAlternativo, setMostrarDeQuienEsAlternativo] = useState(false);
@@ -329,12 +330,11 @@ export default function ConsultarProductos() {
     setProductoInfo({} as Producto);
   };
 
-  const handleMostrarHistorialPrecios = async (id: number) => {
-    if (id) {
-      const producto = await ProductoService.obtenerId(id);
-      setProductoInfo(producto);
-      setMostrarHistorialPrecios(true);
-    }
+  const handleMostrarHistorialPrecios = (id: number) => {
+    const producto = productos.find((item) => item.id === id);
+    if (!producto) return;
+    setProductoHistorial({ id: producto.id, denominacion: producto.denominacion });
+    setMostrarHistorialPrecios(true);
   };
 
   const handleMostrarCambioPrecios = async (id: number) => {
@@ -346,10 +346,8 @@ export default function ConsultarProductos() {
   };
 
   const handleCerrarHistorialPrecios = () => {
-    setBuscar({ cont: 0, componente: "consultar-producto" });
-    limpiarFiltros();
     setMostrarHistorialPrecios(false);
-    setProductoInfo({} as Producto);
+    setProductoHistorial(null);
   };
 
   const handleCerrarCambioPrecios = () => {
@@ -612,7 +610,11 @@ export default function ConsultarProductos() {
                       onDelete={handleDelete}
                       onMovimientos={handleMostrarMovimientosStock}
                       onCambioPrecios={handleMostrarCambioPrecios}
-                      onHistorial={handleMostrarHistorialPrecios}
+                      onHistorial={
+                        puedeHacerAcciones(getRoles())
+                          ? handleMostrarHistorialPrecios
+                          : undefined
+                      }
                       onNotificar={handleNotificar}
                       onAjustarStock={
                         puedeHacerAcciones(getRoles())
@@ -656,6 +658,7 @@ export default function ConsultarProductos() {
         mostrarDeQuienEsAlternativo={mostrarDeQuienEsAlternativo}
 
         productoSeleccionado={productoSeleccionado}
+        productoHistorial={productoHistorial}
         productoInfo={productoInfo}
         auditoria={auditoria}
 
