@@ -4,26 +4,32 @@ import {
   denominacionNotScrollColumnProps,
   observacionesColumnProps,
 } from "../../../herramientas/tablas/formateo-columnas-documentos";
-import type { Linea } from "../../../../interfaces/gestion-producto/linea/interfaces-linea";
+import type { Superlinea } from "../../../../interfaces/gestion-producto/superlinea/interfaces-superlinea";
 import { ActionButton } from "../../../herramientas/reutilizables/action-button";
 import { formatFechaHora } from "../../../herramientas/formateo-de-campos/fucion-formateo";
+import { Badge } from "../../../ui/Badge";
 
 interface Props {
-  lineas: Linea[];
+  superlineas: Superlinea[];
   onEditar: (id: number) => void;
   onInfo: (id: number) => void;
   onDelete: (id: number) => void;
 }
 
-export function DatosTabla({ lineas, onEditar, onInfo, onDelete }: Props) {
-  const columns: Column<Linea>[] = [
+export function DatosTabla({ superlineas, onEditar, onInfo, onDelete }: Props) {
+  const columns: Column<Superlinea>[] = [
     {
       header: "Denominación",
       accessor: "denominacion",
       ...denominacionNotScrollColumnProps,
       formatFunction: ({ value, row }) => (
-        <div className="flex flex-col">
+        <div className="flex items-center gap-2">
           <span>{value}</span>
+          {row.sistema === 1 && (
+            <Badge variant="secondary" className="text-xs">
+              Sistema
+            </Badge>
+          )}
           {row.deletedAt && (
             <span className="text-xs text-red-500 font-medium">
               Eliminada el {formatFechaHora(row.deletedAt)}
@@ -42,19 +48,30 @@ export function DatosTabla({ lineas, onEditar, onInfo, onDelete }: Props) {
   return (
     <TablaAGGrid
       columns={columns}
-      data={lineas}
+      data={superlineas}
       getRowClass={(params: any) =>
-        params.data?.deletedAt ? "opacity-50 bg-gray-100 dark:bg-slate-800 pointer-events-none" : ""
+        params.data?.deletedAt
+          ? "opacity-50 bg-gray-100 dark:bg-slate-800 pointer-events-none"
+          : ""
       }
-      actions={(row: Linea) => {
+      actions={(row: Superlinea) => {
         if (row.deletedAt) return <div className="w-full" />;
 
         return (
           <div className="flex justify-end gap-1">
-            <ActionButton variant="info" title="Ver información" onClick={() => onInfo(row.id)}>
+            <ActionButton
+              variant="info"
+              title="Ver información"
+              onClick={() => onInfo(row.id)}
+            >
               <Info size={16} />
             </ActionButton>
-            <ActionButton variant="edit" title="Editar" onClick={() => onEditar(row.id)}>
+            <ActionButton
+              variant="edit"
+              title="Editar"
+              disabled={row.sistema === 1}
+              onClick={() => onEditar(row.id)}
+            >
               <Pencil size={16} />
             </ActionButton>
             <ActionButton

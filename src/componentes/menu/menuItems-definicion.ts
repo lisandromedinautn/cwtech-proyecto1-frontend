@@ -22,6 +22,7 @@ import {
   Smartphone,
   Bell,
   MessageSquare,
+  Boxes,
 } from "lucide-react";
 import { Rol } from "../../interfaces/generales/interfaces-generales";
 
@@ -35,17 +36,11 @@ export interface MenuItem {
 }
 
 export const menuItems: MenuItem[] = [
-  /* cada {} define un item del menu, que puede o no contener submenu */
   {
-    icon: Home /* icono que muestra */,
-    label: "Inicio" /* nombre que muestra */,
-    path: "/admin" /* path a donde vincula */,
-    // visibleOnMobile: false /* con esto me oculta el icono cuando estoy en el celular */
-    //roles: [Rol.ADMINISTRADOR, Rol.VENDEDOR]
+    icon: Home,
+    label: "Inicio",
+    path: "/admin",
   },
-
-
-
 
   {
     icon: ShoppingBag,
@@ -56,10 +51,10 @@ export const menuItems: MenuItem[] = [
         icon: ShoppingBag,
         label: "Producto",
         path: "producto",
-        subMenu: [ 
+        subMenu: [
           { icon: DollarSign, label: "Cambio de Precios Masivo", path: "cambio-precios-masivo" },
         ],
-        roles: [Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.REPARTIDOR, Rol.REPOSITOR,Rol.ROOT],
+        roles: [Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.REPARTIDOR, Rol.REPOSITOR, Rol.ROOT],
       },
       {
         icon: DollarSign,
@@ -68,14 +63,14 @@ export const menuItems: MenuItem[] = [
         subMenu: [
           { icon: Tag, label: "Marca", path: "marca" },
           { icon: Layers, label: "Líneas", path: "linea" },
+          { icon: Boxes, label: "SuperLíneas", path: "superlinea" },
         ],
-        roles: [Rol.ADMINISTRADOR,Rol.ROOT,Rol.ROOT],
+        roles: [Rol.ADMINISTRADOR, Rol.ROOT],
       },
     ],
-    roles: [Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.REPARTIDOR, Rol.REPOSITOR,Rol.ROOT],
+    roles: [Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.REPARTIDOR, Rol.REPOSITOR, Rol.ROOT],
   },
 
-  
   {
     icon: Building,
     label: "Organización",
@@ -85,12 +80,11 @@ export const menuItems: MenuItem[] = [
         icon: Users,
         label: "Cliente",
         path: "cliente",
-        roles: [Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.REPARTIDOR, Rol.COBRADOR,Rol.ROOT],
+        roles: [Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.REPARTIDOR, Rol.COBRADOR, Rol.ROOT],
       },
-      { icon: Users, label: "Proveedor", path: "proveedor", roles: [Rol.ADMINISTRADOR,Rol.ROOT] },
-      { icon: Users, label: "Personal", path: "personal", visibleOnMobile: false, roles: [Rol.ADMINISTRADOR,Rol.ROOT] },
+      { icon: Users, label: "Proveedor", path: "proveedor", roles: [Rol.ADMINISTRADOR, Rol.ROOT] },
+      { icon: Users, label: "Personal", path: "personal", visibleOnMobile: false, roles: [Rol.ADMINISTRADOR, Rol.ROOT] },
     ],
-    roles: [Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.REPARTIDOR, Rol.COBRADOR,Rol.ROOT], //acá aparece el rol permitido
+    roles: [Rol.ADMINISTRADOR, Rol.VENDEDOR, Rol.REPARTIDOR, Rol.COBRADOR, Rol.ROOT],
   },
-
 ];

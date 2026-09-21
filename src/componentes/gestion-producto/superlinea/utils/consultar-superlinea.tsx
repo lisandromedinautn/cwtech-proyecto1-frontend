@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import LineaService from "../services/linea-service";
-import type { Linea } from "../../../../interfaces/gestion-producto/linea/interfaces-linea";
+import SuperlineaService from "../services/superlinea-service";
+import type { Superlinea } from "../../../../interfaces/gestion-producto/superlinea/interfaces-superlinea";
 import Paginacion from "../../../herramientas/reutilizables/paginacion";
 import { Card, CardContent, CardHeader } from "../../../ui/Card";
 import { useFiltrosContext } from "../../../../context/filtros-contesxt";
@@ -11,36 +11,36 @@ import {
   useConfirmation,
 } from "../../../herramientas/alertas/alertas-confirmacion";
 import { Auditoria, ResponsePost } from "../../../../interfaces/generales/interfaces-generales";
-import { useLineaModal } from "../hooks/use-linea-modal";
-import { LineaModal } from "../modales/linea-modal";
+import { useSuperlineaModal } from "../hooks/use-superlinea-modal";
+import { SuperlineaModal } from "../modales/superlinea-modal";
 import { DatosTabla } from "../componentes/datos-tabla";
 import { DatosCards } from "../componentes/datos-card";
 import { Header } from "../componentes/header";
 import { HeaderLg } from "../componentes/header-lg";
-import { FiltrosLinea, FiltrosLineaValues } from "../componentes/filtros-linea";
-import SuperlineaFiltro from "../../superlinea/componentes/superlinea-filtro";
+import { FiltrosSuperlinea, FiltrosSuperlineaValues } from "../componentes/filtros-superlinea";
 import { getUsuarioId } from "../../../../utils/auth";
+import { normalizeApiError } from "../../../../utils/errores";
 
-const NOMBRE_COMPONENTE = "consultar-linea";
+const NOMBRE_COMPONENTE = "consultar-superlinea";
 
-export default function ConsultarLineas() {
+export default function ConsultarSuperlineas() {
   // ===========================
   // ESTADOS PRINCIPALES
   // ===========================
-  const [lineas, setLineas] = useState<Linea[]>([]);
+  const [superlineas, setSuperlineas] = useState<Superlinea[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const { alerts, addAlert, removeAlert } = useAlerts();
   const { showConfirmation, AlertasConfirmacion } = useConfirmation();
 
-  const modal = useLineaModal();
+  const modal = useSuperlineaModal();
   const usuarioId = getUsuarioId();
 
   // ===========================
   // FILTROS LOCALES
   // ===========================
-  const [filtrosLinea, setFiltrosLinea] = useState<FiltrosLineaValues>({
+  const [filtrosSuperlinea, setFiltrosSuperlinea] = useState<FiltrosSuperlineaValues>({
     denominacion: "",
   });
 
@@ -67,32 +67,53 @@ export default function ConsultarLineas() {
 
   useEffect(() => {
     if (buscar.cont > 0 && buscar.componente === NOMBRE_COMPONENTE) {
-      handleBuscarLineas(true);
+      handleBuscarSuperlineas(true);
     }
   }, [buscar]);
 
   // ===========================
   // CRUD / ACCIONES
   // ===========================
-  const handleAltaLinea = () => {
+  const handleAltaSuperlinea = () => {
     modal.abrirAlta();
   };
 
   const handleAbrirEdicion = async (id: number) => {
-    const linea = await LineaService.obtenerId(id);
-    modal.abrirEdicion(linea);
+    try {
+      const superlinea = await SuperlineaService.obtenerId(id);
+      modal.abrirEdicion(superlinea);
+    } catch (err) {
+      const apiError = normalizeApiError(err);
+      addAlert({
+        type: TipoAlerta.ERROR,
+        title: TituloAlerta.ERROR,
+        message: apiError.message,
+        autoClose: true,
+      });
+    }
   };
 
   const handleMostrarInfo = async (id: number) => {
-    const auditoria = await LineaService.obtenerAuditoria(id);
-    modal.abrirAuditoria(auditoria);
+    try {
+      const auditoria = await SuperlineaService.obtenerAuditoria(id);
+      modal.abrirAuditoria(auditoria);
+    } catch (err) {
+      const apiError = normalizeApiError(err);
+      addAlert({
+        type: TipoAlerta.ERROR,
+        title: TituloAlerta.ERROR,
+        message: apiError.message,
+        autoClose: true,
+      });
+    }
   };
 
   const handleDelete = async (id: number) => {
     const confirmed = await showConfirmation({
       type: TipoAlertaConfirmacion.DESTRUCTIVE,
       title: TituloAlertaConfirmacion.DESTRUCTIVE,
-      message: "¿Estás seguro de que quieres eliminar este elemento? Esta acción no se puede deshacer.",
+      message:
+        "¿Estás seguro de que quieres eliminar esta SuperLínea? Las Líneas asociadas se reasignarán a la SuperLínea \"Sin clasificar\". Esta acción no se puede deshacer.",
       confirmText: "Eliminar",
       cancelText: "Cancelar",
       onConfirm: () => {},
@@ -101,8 +122,8 @@ export default function ConsultarLineas() {
     if (!confirmed) return;
 
     try {
-      const response: ResponsePost = await LineaService.eliminar(id, usuarioId);
-      setLineas((prev) => prev.filter((l) => l.id !== id));
+      const response: ResponsePost = await SuperlineaService.eliminar(id, usuarioId);
+      setSuperlineas((prev) => prev.filter((s) => s.id !== id));
 
       addAlert({
         type: TipoAlerta.SUCCESS,
@@ -110,12 +131,12 @@ export default function ConsultarLineas() {
         message: response.mensaje,
         autoClose: true,
       });
-    } catch {
+    } catch (err) {
+      const apiError = normalizeApiError(err);
       addAlert({
         type: TipoAlerta.ERROR,
         title: TituloAlerta.ERROR,
-        message:
-          "No se puede eliminar este elemento porque está siendo utilizada por uno o más productos.",
+        message: apiError.message,
         autoClose: true,
       });
     }
@@ -124,61 +145,49 @@ export default function ConsultarLineas() {
   // ===========================
   // BÚSQUEDA
   // ===========================
-  const handleBuscarLineas = async (botonBuscar?: boolean) => {
+  const handleBuscarSuperlineas = async (botonBuscar?: boolean) => {
     if (botonBuscar) {
       setSkip(0);
       setPaginaActual(1);
     }
 
     setLoading(true);
+    setError(null);
 
     const filtrosConPaginacion = {
-      denominacion: filtrosLinea.denominacion,
-      ...(filtrosLinea.incluirEliminados ? { incluirEliminados: true } : {}),
-      ...(filtrosLinea.superlineaId ? { superlineaId: filtrosLinea.superlineaId } : {}),
+      denominacion: filtrosSuperlinea.denominacion,
+      ...(filtrosSuperlinea.incluirEliminados ? { incluirEliminados: true } : {}),
       skip,
       take,
     };
 
-    const response = await LineaService.obtener(filtrosConPaginacion);
-
-    setLineas(response.data);
-    setEntidadesTotales(response.total);
-    setLoading(false);
+    try {
+      const response = await SuperlineaService.obtener(filtrosConPaginacion);
+      setSuperlineas(response.data);
+      setEntidadesTotales(response.total);
+    } catch (err) {
+      const apiError = normalizeApiError(err);
+      setError(apiError.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleBuscarDesdeFiltro = (filtros: FiltrosLineaValues) => {
-    // Merge con el estado actual para no perder superlineaId al buscar por denominación
-    setFiltrosLinea((prev) => ({ ...prev, ...filtros }));
-  };
-
-  const handleSuperlineaChange = (superlineaId?: number) => {
-    setFiltrosLinea((prev) => ({ ...prev, superlineaId }));
+  const handleBuscarDesdeFiltro = (filtros: FiltrosSuperlineaValues) => {
+    setFiltrosSuperlinea(filtros);
   };
 
   useEffect(() => {
     if (filtrosInicializados) {
-      handleBuscarLineas();
+      handleBuscarSuperlineas();
     }
   }, [paginaActual, filtrosInicializados]);
 
   useEffect(() => {
     if (filtrosInicializados) {
-      handleBuscarLineas(true);
+      handleBuscarSuperlineas(true);
     }
-  }, [filtrosLinea]);
-
-  const handleImprimirTodo = async () => {
-    const pdfBlob = await LineaService.imprimirTodo();
-    const fileURL = URL.createObjectURL(new Blob([pdfBlob], { type: "application/pdf" }));
-    window.open(fileURL, "_blank");
-  };
-
-  const handleImprimirPagina = async () => {
-    const pdfBlob = await LineaService.imprimirPagina();
-    const fileURL = URL.createObjectURL(new Blob([pdfBlob], { type: "application/pdf" }));
-    window.open(fileURL, "_blank");
-  };
+  }, [filtrosSuperlinea]);
 
   const handlePageChange = (skip: number, take: number, paginaActual: number) => {
     setSkip(skip);
@@ -199,7 +208,7 @@ export default function ConsultarLineas() {
       autoClose: true,
     });
 
-    await handleBuscarLineas();
+    await handleBuscarSuperlineas();
   };
 
   // ===========================
@@ -221,49 +230,38 @@ export default function ConsultarLineas() {
             <div className="hidden lg:block">
               <Header
                 entidadesTotales={entidadesTotales}
-                datosLength={lineas.length}
-                paginaActual={paginaActual}
-                openModal={handleAltaLinea}
-                handleImprimirTodo={handleImprimirTodo}
-                handleImprimirPagina={handleImprimirPagina}
+                datosLength={superlineas.length}
+                openModal={handleAltaSuperlinea}
               />
             </div>
 
             <div className="lg:hidden">
               <HeaderLg
                 entidadesTotales={entidadesTotales}
-                datosLength={lineas.length}
-                paginaActual={paginaActual}
-                openModal={handleAltaLinea}
-                handleImprimirTodo={handleImprimirTodo}
-                handleImprimirPagina={handleImprimirPagina}
+                datosLength={superlineas.length}
+                openModal={handleAltaSuperlinea}
               />
             </div>
           </CardHeader>
 
           <CardContent className="p-0">
-            <div className="p-4 border-b bg-gray-50 dark:bg-slate-800">
-              <div className="max-w-xs">
-                <SuperlineaFiltro
-                  value={filtrosLinea.superlineaId}
-                  onChange={handleSuperlineaChange}
-                />
-              </div>
-            </div>
-
-            <FiltrosLinea onBuscar={handleBuscarDesdeFiltro} mostrarIncluirEliminados />
+            <FiltrosSuperlinea onBuscar={handleBuscarDesdeFiltro} mostrarIncluirEliminados />
 
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4" />
-                <p className="text-gray-600 text-lg">Cargando líneas...</p>
+                <p className="text-gray-600 text-lg">Cargando SuperLíneas...</p>
+              </div>
+            ) : superlineas.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <p className="text-gray-500 text-lg">No se encontraron SuperLíneas.</p>
               </div>
             ) : (
               <>
                 {/* Desktop */}
                 <div className="hidden lg:block">
                   <DatosTabla
-                    lineas={lineas}
+                    superlineas={superlineas}
                     onEditar={handleAbrirEdicion}
                     onInfo={handleMostrarInfo}
                     onDelete={handleDelete}
@@ -271,11 +269,11 @@ export default function ConsultarLineas() {
                 </div>
 
                 {/* Mobile */}
-                <div className="lg:hidden space-y-4">
-                  {lineas.map((linea) => (
+                <div className="lg:hidden space-y-4 p-4">
+                  {superlineas.map((superlinea) => (
                     <DatosCards
-                      key={linea.id}
-                      linea={linea}
+                      key={superlinea.id}
+                      superlinea={superlinea}
                       onEditar={handleAbrirEdicion}
                       onInfo={handleMostrarInfo}
                       onDelete={handleDelete}
@@ -301,10 +299,10 @@ export default function ConsultarLineas() {
       </>
 
       {/* MODAL ÚNICO */}
-      <LineaModal
+      <SuperlineaModal
         open={modal.tipo !== null}
         tipo={modal.tipo}
-        linea={modal.linea}
+        superlinea={modal.superlinea}
         auditoria={modal.auditoria as Auditoria | null}
         onClose={modal.cerrar}
         onSuccess={handleSuccess}
