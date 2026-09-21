@@ -4,6 +4,7 @@ import axiosConfig from "../../../../utils/axiosConfig";
 import { createCrudService } from "../../../../utils/crudFactory";
 import { FormValues } from "../interfaces/interfaces-validaciones-producto";
 import ApiService from "../../../../utils/apiService";
+import type { HistorialPreciosPaginado } from "../../../../interfaces/gestion-producto/historial-precios/interfaces-historial-precios";
 
 
 const apiUrl = axiosConfig.apiUrl;
@@ -21,6 +22,9 @@ const ProductoService = {
 
   ajustarStockManual: (id: number, payload: AjusteStockManualPayload) =>
     ApiService.post(`/producto/${id}/ajustar-manual`, payload),
+
+  obtenerHistorialPrecios: (id: number, skip: number, take: number): Promise<HistorialPreciosPaginado> =>
+    ApiService.get(`/producto/${id}/historial-precios`, { skip, take }),
 
   
   obtenerMobile: async (filtros: any) => {

@@ -13,6 +13,8 @@ interface ProveedorModalesProps {
   onClose: () => void;
   onSuccess: (mensaje: string, proveedor?: Proveedor) => void;
   onActualizarSuccess: (mensaje: string) => void;
+  onNotify: (alert: { type: "error" | "warning"; title: string; message: string }) => void;
+  onRefresh: () => Promise<void> | void;
 }
 
 export const ProveedorModales = ({
@@ -22,6 +24,8 @@ export const ProveedorModales = ({
   onClose,
   onSuccess,
   onActualizarSuccess,
+  onNotify,
+  onRefresh,
 }: ProveedorModalesProps) => {
   if (!modalActivo) return null;
 
@@ -30,7 +34,7 @@ export const ProveedorModales = ({
       {/* CREAR PROVEEDOR */}
       {modalActivo === "crear" && (
         <div className="relative p-6 sm:p-8 rounded-lg shadow-lg w-4/5 sm:w-3/5 md:w-2/3 lg:w-1/2 xl:w-2/5 max-w-full">
-          <RegistrarActualizarProveedorForm onClose={onClose} onSuccess={onSuccess} />
+          <RegistrarActualizarProveedorForm onClose={onClose} onSuccess={onSuccess} onNotify={onNotify} onRefresh={onRefresh} />
         </div>
       )}
 
@@ -41,6 +45,8 @@ export const ProveedorModales = ({
             proveedor={proveedorSeleccionado}
             onClose={onClose}
             onSuccess={onActualizarSuccess}
+            onNotify={onNotify}
+            onRefresh={onRefresh}
           />
         </div>
       )}

@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Producto } from "../../../../interfaces/gestion-producto/producto/interfaces-producto";
 import { getUsuarioId } from "../../../../utils/auth";
-import { parseApiError } from "../../../../utils/errores";
+import { applyApiErrorToForm, getApiErrorCategory, getApiErrorMessage } from "../../../../utils/errores";
 import { Button } from "../../../ui/Button";
 import ProductoService from "../services/producto-service";
 
@@ -9,12 +9,16 @@ interface Props {
   producto: Producto;
   onClose: () => void;
   onSuccess: (mensaje: string) => void;
+  onNotify?: (alert: { type: "error" | "warning"; title: string; message: string }) => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
 export default function AjustarStockManualModal({
   producto,
   onClose,
   onSuccess,
+  onNotify,
+  onRefresh,
 }: Props) {
   const [cantidad, setCantidad] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -45,7 +49,13 @@ export default function AjustarStockManualModal({
       });
       onSuccess(response.message);
     } catch (apiError) {
-      setError(parseApiError(apiError));
+      const error = applyApiErrorToForm(
+        apiError,
+        (_field, formError) => setError(formError.message),
+        onNotify ?? (() => {}),
+      );
+      if (getApiErrorCategory(error) !== "validation") setError(getApiErrorMessage(error));
+      if (error.statusCode === 404) await onRefresh?.();
     } finally {
       setEnviando(false);
     }

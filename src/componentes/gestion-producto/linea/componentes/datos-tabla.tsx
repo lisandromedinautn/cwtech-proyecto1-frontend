@@ -37,6 +37,13 @@ export function DatosTabla({ lineas, onEditar, onInfo, onDelete }: Props) {
       accessor: "observacion",
       ...observacionesColumnProps,
     },
+    {
+      header: "SuperLínea",
+      accessor: "superlineaDenominacion",
+      formatFunction: ({ row }) => (
+        <span>{row.superlineaDenominacion ?? row.superlinea?.denominacion ?? "—"}</span>
+      ),
+    },
   ];
 
   return (
@@ -60,7 +67,7 @@ export function DatosTabla({ lineas, onEditar, onInfo, onDelete }: Props) {
             <ActionButton
               variant="delete"
               title="Eliminar"
-              disabled={row.sistema}
+              disabled={row.sistema === 1}
               onClick={() => onDelete(row.id)}
             >
               <Trash size={16} />

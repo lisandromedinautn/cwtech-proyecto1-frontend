@@ -1,4 +1,4 @@
-import { Bell, PackagePlus } from "lucide-react";
+import { Bell, History, PackagePlus } from "lucide-react";
 import type { ConsultarProducto } from "../../../../interfaces/gestion-producto/producto/interfaces-producto";
 import { formatPrice } from "../../../herramientas/formateo-de-campos/fucion-formateo";
 import { ActionButton } from "../../../herramientas/reutilizables/action-button";
@@ -13,7 +13,7 @@ interface Props {
   onDelete: (id: number) => void;
   onMovimientos: (id: number) => void;
   onCambioPrecios: (id: number) => void;
-  onHistorial: (id: number) => void;
+  onHistorial?: (id: number) => void;
   onNotificar?: (producto: ConsultarProducto) => void;
   onAjustarStock?: (id: number) => void;
 }
@@ -122,6 +122,16 @@ export function DatosCard({
           onClick={() => onAjustarStock(producto.id)}
         >
           <PackagePlus size={16} />
+        </ActionButton>
+      )}
+
+      {onHistorial && (
+        <ActionButton
+          variant="info"
+          title="Historial de precios"
+          onClick={() => onHistorial(producto.id)}
+        >
+          <History size={16} />
         </ActionButton>
       )}
 

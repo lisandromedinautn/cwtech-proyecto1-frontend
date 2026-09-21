@@ -11,13 +11,20 @@ import { formatPrice } from "../../../../herramientas/formateo-de-campos/fucion-
 import { Column } from "../../../../herramientas/tablas/tabla-flexible-ag-grid";
 import { useConfiguracionSistema } from "../../../../sistema/ConfiguracionSistemaContext";
 import { useFiltrosContext } from "../../../../../context/filtros-contesxt";
-import CambioPreciosMasivoService from "../cambio-precios-masivo-service";
 import CambioPreciosManual from "../cambio-precios.manual";
 import { useCatalogosContext } from "../../../../../context/catalogos-context";
 import { getUsuarioId } from "../../../../../utils/auth";
-import { useCambioPrecios } from "../hooks/useCambioPrecios";
+import { useCambioPrecios, CambioPreciosMasivoDto } from "../hooks/useCambioPrecios";
 import TablaCambioPrecios from "../componentes/tabla-cambio-precios";
 import FiltrosCambioPrecios from "../componentes/filtros-cambio-precios";
+import ProductoService from "../../../producto/services/producto-service";
+import Paginacion from "../../../../herramientas/reutilizables/paginacion";
+import { usePaginacion } from "../../../../../hooks/use-paginacion";
+import { PAGINACION } from "../../../../../config/paginacion";
+
+// TipoAumento.PORCENTAJE = 1, TipoAumento.MONTO_FIJO = 2
+const TIPO_PORCENTAJE = 1;
+const TIPO_MONTO_FIJO = 2;
 
 export default function CambioPreciosMasivo() {
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +32,12 @@ export default function CambioPreciosMasivo() {
   const [productoSeleccionado, setProductoSeleccionado] = useState<ConsultarProductosCambioPreciosMasivo>(
     {} as ConsultarProductosCambioPreciosMasivo
   );
+
+  // ── Estados del ajuste masivo de precios ──
+  const [tipoAjuste, setTipoAjuste] = useState<number>(TIPO_PORCENTAJE);
+  const [valorAjuste, setValorAjuste] = useState<number>(0);
+  const [previsualizacionLista, setPrevisualizacionLista] = useState(false);
+  const [alcance, setAlcance] = useState<"" | "LINEA" | "GLOBAL">("");
 
   const usuarioId = getUsuarioId();
   const { configuracion } = useConfiguracionSistema();
@@ -37,50 +50,39 @@ export default function CambioPreciosMasivo() {
     setValoresFiltros,
     limpiarFiltros,
     setBuscar,
-    buscarMarcas,
     buscarLineas,
   } = useFiltrosContext();
 
   const {
     productos,
     loading,
+    entidadesTotales,
+    preview,
     setProductos,
     buscarProductos,
     aplicarCambios,
     guardarCambios,
+    limpiarPreview,
     actualizarProductoLocal,
   } = useCambioPrecios(usuarioId);
 
-  const { marcas, lineas, sublineas, setLineas, setMarcas, setSublineas } = useCatalogosContext();
+  const {
+    paginaActual,
+    skip,
+    take,
+    handlePageChange,
+    resetearPaginacion,
+  } = usePaginacion(PAGINACION.TAKE_DEFAULT);
+
+  const [filtrosAplicados, setFiltrosAplicados] = useState<any | null>(null);
+
+  const { lineas, setLineas } = useCatalogosContext();
 
   useEffect(() => {
     limpiarFiltros();
     setBuscar({ cont: 0, componente: "cambio-precios-masivo" });
-    setFiltrosNecesarios({ marca: true, linea: true, sublinea: true });
+    setFiltrosNecesarios({ linea: true });
   }, []);
-
-  const fetchMarcas = useCallback(async () => {
-    setError(null);
-    try {
-      const caracteresParaBusqueda = configuracion?.caracteresParaBusqueda ?? 4;
-      if (
-        valoresFiltros.denominacionMarca &&
-        valoresFiltros.denominacionMarca.length >= caracteresParaBusqueda
-      ) {
-        const marcasTotales = await CambioPreciosMasivoService.obtenerTotales(
-          { denominacion: valoresFiltros.denominacionMarca || " " },
-          "marcas"
-        );
-        setMarcas(marcasTotales.data);
-      }
-    } catch {
-      setError("No se pudieron cargar las marcas.");
-    }
-  }, [valoresFiltros.denominacionMarca, configuracion?.caracteresParaBusqueda]);
-
-  useEffect(() => {
-    fetchMarcas();
-  }, [buscarMarcas]);
 
   const fetchLineas = useCallback(async () => {
     setError(null);
@@ -90,7 +92,7 @@ export default function CambioPreciosMasivo() {
         valoresFiltros.denominacionLinea &&
         valoresFiltros.denominacionLinea.length >= caracteresParaBusqueda
       ) {
-        const lineasTotales = await CambioPreciosMasivoService.obtenerTotales(
+        const lineasTotales = await ProductoService.obtenerTotales(
           { denominacion: valoresFiltros.denominacionLinea || " " },
           "lineas"
         );
@@ -104,24 +106,6 @@ export default function CambioPreciosMasivo() {
   useEffect(() => {
     fetchLineas();
   }, [buscarLineas]);
-
-  useEffect(() => {
-    const fetchSublineas = async () => {
-      setError(null);
-      try {
-        if (valoresFiltros.lineaId && valoresFiltros.lineaId !== 0) {
-          const sublineasTotales = await CambioPreciosMasivoService.obtenerTotalesPara(
-            valoresFiltros.lineaId || 0,
-            "sublineas"
-          );
-          setSublineas(sublineasTotales.data);
-        }
-      } catch {
-        setError("No se pudieron cargar las sublíneas.");
-      }
-    };
-    fetchSublineas();
-  }, [valoresFiltros.lineaId]);
 
   const handleAbrirActualizarProducto = useCallback(
     (producto: ConsultarProductosCambioPreciosMasivo) => {
@@ -172,17 +156,79 @@ export default function CambioPreciosMasivo() {
 
   const handleLimpiarFiltros = useCallback(() => {
     setValoresFiltros({
-      denominacionMarca: "",
       denominacionLinea: "",
-      marcaId: undefined,
       lineaId: undefined,
-      sublineaId: undefined,
     });
-    setSublineas([]);
     setLineas([]);
-    setMarcas([]);
     setProductos([]);
-  }, [setValoresFiltros, setSublineas, setLineas, setMarcas, setProductos]);
+    setFiltrosAplicados(null);
+    resetearPaginacion();
+    setPrevisualizacionLista(false);
+    setAlcance("");
+    setValorAjuste(0);
+    limpiarPreview();
+  }, [setValoresFiltros, setLineas, setProductos, resetearPaginacion, limpiarPreview]);
+
+  const handleBuscarProductos = useCallback(() => {
+    if (!alcance) {
+      addAlert({
+        type: TipoAlerta.WARNING,
+        title: TituloAlerta.WARNING,
+        message: "Seleccioná el alcance de la modificación antes de buscar.",
+        autoClose: true,
+        duration: 3000,
+      });
+      return;
+    }
+
+    if (alcance === "LINEA" && !valoresFiltros.lineaId) {
+      addAlert({
+        type: TipoAlerta.WARNING,
+        title: TituloAlerta.WARNING,
+        message: "Seleccioná una línea para buscar sus productos.",
+        autoClose: true,
+        duration: 3000,
+      });
+      return;
+    }
+
+    const filtros = {
+      lineaId: alcance === "LINEA" ? valoresFiltros.lineaId : undefined,
+    };
+
+    resetearPaginacion();
+    setFiltrosAplicados(filtros);
+    buscarProductos(filtros, 0, take);
+
+    // Cambiar el filtro invalida cualquier previsualización previa.
+    setPrevisualizacionLista(false);
+    limpiarPreview();
+  }, [alcance, valoresFiltros.lineaId, addAlert, resetearPaginacion, buscarProductos, take, limpiarPreview]);
+
+  const handleCambiarAlcance = useCallback((nuevoAlcance: "" | "LINEA" | "GLOBAL") => {
+    setAlcance(nuevoAlcance);
+    setPrevisualizacionLista(false);
+    limpiarPreview();
+    resetearPaginacion();
+
+    if (nuevoAlcance === "GLOBAL") {
+      const filtros = { lineaId: undefined };
+      setValoresFiltros({ denominacionLinea: "", lineaId: undefined });
+      setLineas([]);
+      setFiltrosAplicados(filtros);
+      buscarProductos(filtros, 0, take);
+      return;
+    }
+
+    setProductos([]);
+    setFiltrosAplicados(null);
+  }, [buscarProductos, limpiarPreview, resetearPaginacion, setLineas, setProductos, setValoresFiltros, take]);
+
+  useEffect(() => {
+    if (filtrosAplicados) {
+      buscarProductos(filtrosAplicados, skip, take);
+    }
+  }, [paginaActual, skip, take]);
 
   const handleActualizarSuccess = useCallback(
     (productoActualizado: ConsultarProductosCambioPreciosMasivo) => {
@@ -199,16 +245,140 @@ export default function CambioPreciosMasivo() {
     [addAlert, actualizarProductoLocal]
   );
 
+  const handleCambiarTipoAjuste = useCallback((tipo: number) => {
+    setTipoAjuste(tipo);
+    setPrevisualizacionLista(false);
+    limpiarPreview();
+  }, [limpiarPreview]);
+
+  const handleCambiarValorAjuste = useCallback((valor: number) => {
+    setValorAjuste(valor);
+    setPrevisualizacionLista(false);
+    limpiarPreview();
+  }, [limpiarPreview]);
+
+  const construirDto = useCallback((): CambioPreciosMasivoDto => ({
+    tipo: Number(tipoAjuste),
+    valor: Number(valorAjuste),
+    alcance,
+    lineaId: alcance === "LINEA" ? Number(valoresFiltros.lineaId) : undefined,
+    usuarioId: Number(usuarioId),
+  }), [tipoAjuste, valorAjuste, alcance, valoresFiltros.lineaId, usuarioId]);
+
+  // Pide el preview al backend, calculado contra TODOS
+  // los productos alcanzados por el filtro, no solo la página visible.
+  const handleAplicarCambios = useCallback(async () => {
+    if (!valorAjuste) {
+      addAlert({
+        type: TipoAlerta.WARNING,
+        title: TituloAlerta.WARNING,
+        message: "Ingresá un porcentaje o monto distinto de 0.",
+        autoClose: true,
+        duration: 3000,
+      });
+      return;
+    }
+
+    setPrevisualizacionLista(false);
+
+    try {
+      const resultado = await aplicarCambios(construirDto());
+
+      if (resultado.cantidadInvalidos > 0) {
+        addAlert({
+          type: TipoAlerta.WARNING,
+          title: TituloAlerta.WARNING,
+          message: `${resultado.cantidadInvalidos} de ${resultado.cantidadTotal} producto(s) quedarían con precio inválido. Si guardás, la operación completa será rechazada.`,
+          autoClose: true,
+          duration: 6000,
+        });
+      } else {
+        setPrevisualizacionLista(true);
+        addAlert({
+          type: TipoAlerta.SUCCESS,
+          title: TituloAlerta.SUCCESS,
+          message: `Previsualización lista: ${resultado.cantidadTotal} producto(s) serían afectados.`,
+          autoClose: true,
+          duration: 3000,
+        });
+      }
+    } catch (err: any) {
+      addAlert({
+        type: TipoAlerta.ERROR,
+        title: TituloAlerta.ERROR,
+        message: err?.response?.data?.message ?? "No se pudo calcular la previsualización.",
+        autoClose: true,
+        duration: 4000,
+      });
+    }
+  }, [valorAjuste, aplicarCambios, construirDto, addAlert]);
+
+  // Guardar confirma la operación y el backend recalcula el ajuste solicitado.
   const handleGuardarCambios = useCallback(async () => {
-    const response = await guardarCambios();
-    addAlert({
-      type: TipoAlerta.SUCCESS,
-      title: TituloAlerta.SUCCESS,
-      message: response.mensaje,
-      autoClose: true,
-      duration: 3000,
+    if (!previsualizacionLista) {
+      addAlert({
+        type: TipoAlerta.WARNING,
+        title: TituloAlerta.WARNING,
+        message: "Primero generá una previsualización válida del ajuste.",
+        autoClose: true,
+        duration: 3000,
+      });
+      return;
+    }
+
+    const confirmed = await showConfirmation({
+      type: TipoAlertaConfirmacion.DEFAULT,
+      title: "Confirmar actualización masiva de precios",
+      message:
+        alcance === "GLOBAL"
+          ? "Vas a aplicar este ajuste a TODOS los productos activos. ¿Confirmás?"
+          : "Vas a aplicar este ajuste a los productos de la línea seleccionada. ¿Confirmás?",
+      confirmText: "Aplicar y guardar",
+      cancelText: "Cancelar",
+      onConfirm: () => {},
     });
-  }, [guardarCambios, addAlert]);
+    if (!confirmed) return;
+
+    try {
+      const response = await guardarCambios(construirDto());
+      addAlert({
+        type: TipoAlerta.SUCCESS,
+        title: TituloAlerta.SUCCESS,
+        message: response.mensaje ?? "Precios actualizados correctamente.",
+        autoClose: true,
+        duration: 3000,
+      });
+
+      setPrevisualizacionLista(false);
+      setValorAjuste(0);
+
+      // Refrescar la tabla para reflejar los precios ya persistidos
+      if (filtrosAplicados) {
+        buscarProductos(filtrosAplicados, skip, take);
+      }
+    } catch (err: any) {
+      addAlert({
+        type: TipoAlerta.ERROR,
+        title: TituloAlerta.ERROR,
+        message:
+          err?.response?.data?.message ??
+          "No se pudo aplicar el cambio. La operación fue rechazada sin modificar precios.",
+        autoClose: true,
+        duration: 5000,
+      });
+    }
+  }, [
+    previsualizacionLista,
+    alcance,
+    showConfirmation,
+    guardarCambios,
+    construirDto,
+    filtrosAplicados,
+    buscarProductos,
+    skip,
+    take,
+    addAlert,
+  ]);
 
   const columns = useMemo<Column<ConsultarProductosCambioPreciosMasivo>[]>(
     () => [
@@ -247,79 +417,41 @@ export default function CambioPreciosMasivo() {
         ),
       },
       {
-        header: "P Ocasional",
-        accessor: "precioOcasionalConIva",
+        header: "Precio",
+        accessor: "precio",
         flex: 0.5,
         type: "text",
         editable: false,
         align: "right",
-        formatFunction: ({ value }) => <span>{formatPrice(value, "ARS")}</span>,
-      },
-      {
-        header: "N Ocasional",
-        accessor: "precioOcasionalConIvaNuevo",
-        flex: 0.5,
-        type: "text",
-        editable: false,
-        align: "right",
-        formatFunction: ({ value }) => <span>{formatPrice(value, "ARS")}</span>,
-      },
-      {
-        header: "P Mayorista",
-        accessor: "precioMayoristaConIva",
-        flex: 0.5,
-        type: "text",
-        editable: false,
-        align: "right",
-        formatFunction: ({ value }) => <span>{formatPrice(value, "ARS")}</span>,
-      },
-      {
-        header: "N Mayorista",
-        accessor: "precioMayoristaConIvaNuevo",
-        flex: 0.5,
-        type: "text",
-        editable: false,
-        align: "right",
-        formatFunction: ({ value }) => <span>{formatPrice(value, "ARS")}</span>,
-      },
-      {
-        header: "P Cliente",
-        accessor: "precioClienteConIva",
-        flex: 0.5,
-        type: "text",
-        editable: false,
-        align: "right",
-        formatFunction: ({ value }) => <span>{formatPrice(value, "ARS")}</span>,
-      },
-      {
-        header: "N Cliente",
-        accessor: "precioClienteConIvaNuevo",
-        flex: 0.5,
-        type: "text",
-        editable: false,
-        align: "right",
-        formatFunction: ({ value }) => <span>{formatPrice(value, "ARS")}</span>,
-      },
-      {
-        header: "P Oferta",
-        accessor: "precioOfertaConIva",
-        flex: 0.5,
-        type: "text",
-        editable: false,
-        align: "right",
-        formatFunction: ({ value }) => <span>{formatPrice(value, "ARS")}</span>,
-      },
-      {
-        header: "N Oferta",
-        accessor: "precioOfertaConIvaNuevo",
-        flex: 0.5,
-        type: "text",
-        editable: false,
-        align: "right",
-        formatFunction: ({ value }) => <span>{formatPrice(value, "ARS")}</span>,
+        formatFunction: ({ value, row }) => {
+          const item = preview.get(row.id);
+
+          if (!item) {
+            return <span>${formatPrice(value)}</span>;
+          }
+
+          return (
+            <span>
+              <span className="line-through text-gray-400 mr-2">
+                ${formatPrice(item.precioActual)}
+              </span>
+              <span
+                className={
+                  item.valido
+                    ? "text-green-600 font-semibold"
+                    : "text-red-600 font-semibold"
+                }
+              >
+                {item.valido && item.precioNuevo !== null
+                  ? `$${formatPrice(item.precioNuevo)}`
+                  : "inválido"}
+              </span>
+            </span>
+          );
+        },
       },
     ],
-    []
+    [preview]
   );
 
   return (
@@ -342,32 +474,38 @@ export default function CambioPreciosMasivo() {
               <FiltrosCambioPrecios
                 valoresFiltros={valoresFiltros}
                 setValoresFiltros={setValoresFiltros}
-                marcas={marcas}
                 lineas={lineas}
-                sublineas={sublineas}
                 productosLength={productos.length}
-                onBuscar={() =>
-                  buscarProductos({
-                    marcaId: valoresFiltros.marcaId,
-                    lineaId: valoresFiltros.lineaId,
-                    subLineaId: valoresFiltros.sublineaId,
-                  })
-                }
-                onAplicarCambios={aplicarCambios}
-                onGuardarCambios={handleGuardarCambios}
-                fetchMarcas={fetchMarcas}
+                onBuscar={handleBuscarProductos}
                 fetchLineas={fetchLineas}
                 onLimpiarFiltros={handleLimpiarFiltros}
+                // ── Props nuevas para el ajuste masivo ──
+                tipoAjuste={tipoAjuste}
+                setTipoAjuste={handleCambiarTipoAjuste}
+                valorAjuste={valorAjuste}
+                setValorAjuste={handleCambiarValorAjuste}
+                alcance={alcance}
+                setAlcance={handleCambiarAlcance}
+                onAplicarCambios={handleAplicarCambios}
+                puedeGuardarCambios={previsualizacionLista}
+                onGuardarCambios={handleGuardarCambios}
               />
               <CardContent className="p-0">
                 <TablaCambioPrecios
                   productos={productos}
                   columns={columns}
-                  onEditar={handleAbrirActualizarProducto}
-                  onEliminar={handleDelete}
                 />
               </CardContent>
             </Card>
+
+            <div className="mt-6">
+              <Paginacion
+                entidadesTotales={entidadesTotales}
+                take={take}
+                paginaActual={paginaActual}
+                onChange={handlePageChange}
+              />
+            </div>
 
             <Alertas alerts={alerts} onRemove={removeAlert} />
             <AlertasConfirmacion />

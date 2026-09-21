@@ -23,6 +23,7 @@ import { ColumnasImprimir } from "../../../herramientas/reutilizables/columnas-i
 import ProveedorService from "../services/proveedor-service";
 import { FiltrosProveedor, FiltrosProveedorValues } from "../componentes/filtros-proveedor";
 import { CabeceraDocumentoProvider } from "../../../../context/cabecera-documento-provider";
+import { getApiErrorCategory, getApiErrorMessage, normalizeApiError } from "../../../../utils/errores";
 
 
 // =========================
@@ -235,13 +236,15 @@ export default function ConsultarProveedores() {
         message: mensaje,
         autoClose: true,
       });
-    } catch {
+    } catch (error) {
+      const apiError = normalizeApiError(error);
       addAlert({
-        type: "error",
-        title: "Error",
-        message: "No se pudo eliminar el proveedor.",
+        type: getApiErrorCategory(apiError) === "not-found" ? "warning" : "error",
+        title: getApiErrorCategory(apiError) === "not-found" ? "Recurso inexistente" : "Error",
+        message: getApiErrorMessage(apiError),
         autoClose: true,
       });
+      if (apiError.statusCode === 404) await handleBuscarProveedores();
     }
   };
 
@@ -344,6 +347,8 @@ export default function ConsultarProveedores() {
             }}
             onSuccess={handleSuccess}
             onActualizarSuccess={handleSuccess}
+            onNotify={(alert) => addAlert({ ...alert, autoClose: true })}
+            onRefresh={handleBuscarProveedores}
           />
       </CabeceraDocumentoProvider>
 

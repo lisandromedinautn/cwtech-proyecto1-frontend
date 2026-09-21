@@ -1,14 +1,11 @@
 // components/Herramientas/FormulariosGenerales/DomicilioForm.tsx
 import { useEffect, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import {
   SelectLocalidad,
   SelectProvincia,
 } from "../../../interfaces/gestion-organizacion/localidad/interfaces-localidad";
 import FormInput from "../formateo-de-campos/form-input";
-import * as yup from "yup";
-import { yupResolver } from "@hookform/resolvers/yup";
-import { Domicilio } from "../../../interfaces/generales/interfaces-generales";
 import Select from "react-select";
 import ClienteService from "../../gestion-organizacion/cliente/services/cliente-service";
 import { Button } from "../../ui/Button";
@@ -17,54 +14,23 @@ import { PlusCircle } from "lucide-react";
 import { ModalPortal } from "../../../utils/modal-portal";
 import React from "react";
 import RegistrarActualizarLocalidadForm from "../../gestion-organizacion/localidad/utils/registrar-actualizar-localidad";
-
-export interface DatosDomicilio {
-  direccion: string;
-  localidadId: number;
-}
-
-interface FormValues {
-  direccion: string;
-  localidadId: number;
-  provinciaId: number;
-}
-
-const schema = yup.object().shape({
-  direccion: yup.string().required("Campo requerido"),
-  localidadId: yup.number().typeError("Campo requerido").required(),
-  provinciaId: yup.number().typeError("Campo requerido").required(),
-});
+import { getApiErrorMessage, normalizeApiError } from "../../../utils/errores";
 
 export default function DomicilioForm({
-  onDatos,
-  datosDomicilioExistentes,
   sistema,
+  onNotify,
 }: {
-  datosDomicilioExistentes?: Domicilio;
-  onDatos: (datos: DatosDomicilio) => void;
   sistema?: number;
+  onNotify?: (alert: { type: "error" | "warning"; title: string; message: string }) => void;
 }) {
   const [localidades, setLocalidades] = useState<SelectLocalidad[]>([]);
   const [provincias, setProvincias] = useState<SelectProvincia[]>([]);
   const [mostrarFormularioLocalidad, setMostrarFormularioLocalidad] = useState(false);
   const [selectedProvincia, setSelectedProvincia] = React.useState<SelectProvincia>({} as SelectProvincia);
 
-  const methods = useForm<FormValues>({
-    resolver: yupResolver(schema),
-    defaultValues:{
-      provinciaId:1,
-      localidadId:1,
-      direccion:""
-    }
-  });
-
-  const { getValues, watch } = methods;
-
-  const direccion = watch("direccion");
-  const localidadId = watch("localidadId");
-  const provinciaId = watch("provinciaId");
-
-  console.log("los datos del domicilio q llegan son:", datosDomicilioExistentes);
+  const { setValue, watch, formState: { errors } } = useFormContext();
+  const localidadId = watch("domicilio.localidadId");
+  const provinciaId = watch("domicilio.provinciaId");
 
   useEffect(() => {
     const fetch = async () => {
@@ -75,6 +41,7 @@ export default function DomicilioForm({
         }
       } catch (error) {
         console.error("Error al cargar provincias:", error);
+        onNotify?.({ type: "error", title: "Error", message: getApiErrorMessage(normalizeApiError(error)) });
       }
     };
     fetch();
@@ -87,52 +54,40 @@ export default function DomicilioForm({
         setProvincias(provincias.data);
       } catch (error) {
         console.error("Error al cargar provincias:", error);
+        onNotify?.({ type: "error", title: "Error", message: getApiErrorMessage(normalizeApiError(error)) });
       }
     };
     fetch();
   }, []);
 
-  useEffect(() => {
-    onDatos({
-      direccion: getValues("direccion"),
-      localidadId: +getValues("localidadId"),
-    });
-  }, [direccion, localidadId]);
-
-  useEffect(() => {
-    if (datosDomicilioExistentes) {
-      methods.reset({
-        direccion: datosDomicilioExistentes.direccion,
-        localidadId: datosDomicilioExistentes.localidadId || 0,
-        provinciaId: datosDomicilioExistentes.provinciaId || 0,
-      });
-    }
-  }, [datosDomicilioExistentes]);
-
   const handleSuccess = async () => {
     setMostrarFormularioLocalidad(false);
 
-    const localidades = await ClienteService.obtenerTotalesPara(provinciaId, "localidades"); // deberías tener este endpoint
-    setLocalidades(localidades.data);
+    try {
+      const localidades = await ClienteService.obtenerTotalesPara(provinciaId, "localidades"); // deberías tener este endpoint
+      setLocalidades(localidades.data);
+    } catch (error) {
+      onNotify?.({ type: "error", title: "Error", message: getApiErrorMessage(normalizeApiError(error)) });
+    }
   };
 
   return (
     <>
-      <FormProvider {...methods}>
-        <div className="border border-gray-300 rounded-lg p-2 shadow-sm bg-gray-100">
+      <div className="border border-gray-300 rounded-lg p-2 shadow-sm bg-gray-100">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormInput name="direccion" label="Dirección" placeholder="Ingrese la dirección" />
+            <FormInput name="domicilio.direccion" label="Dirección" placeholder="Ingrese la dirección" />
 
             <div>
               <label className="block text-sm font-medium text-gray-700 py-1">Provincia</label>
               <Select
-                value={provincias.find((option) => option.id === watch("provinciaId")) || null}
+                value={provincias.find((option) => option.id === provinciaId) || null}
                 options={provincias}
                 getOptionLabel={(option) => option.denominacion}
                 getOptionValue={(option) => String(option.id)}
                 onChange={(selectedOption) => {
                   setSelectedProvincia(selectedOption as SelectProvincia);
-                  methods.setValue(`provinciaId`, selectedOption?.id || 0);
+                  setValue("domicilio.provinciaId", selectedOption?.id || 0);
+                  setValue("domicilio.localidadId", 0);
                 }}
                 placeholder="Seleccione"
                 className="text-black"
@@ -155,18 +110,21 @@ export default function DomicilioForm({
                   menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                 }}
               />
+              {errors.domicilio?.provinciaId?.message && (
+                <small className="text-red-500">{String(errors.domicilio.provinciaId.message)}</small>
+              )}
             </div>
 
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 py-1">Localidad</label>
                 <Select
-                  value={localidades.find((option) => option.id === watch("localidadId")) || null}
+                  value={localidades.find((option) => option.id === localidadId) || null}
                   options={localidades}
                   getOptionLabel={(option) => option.denominacion}
                   getOptionValue={(option) => String(option.id)}
                   onChange={(selectedOption) => {
-                    methods.setValue(`localidadId`, selectedOption?.id || 0);
+                    setValue("domicilio.localidadId", selectedOption?.id || 0);
                   }}
                   placeholder="Seleccione"
                   isDisabled={!provinciaId || sistema === 1} // 👈 Deshabilita si no hay provincia
@@ -189,6 +147,9 @@ export default function DomicilioForm({
                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                   }}
                 />
+                {errors.domicilio?.localidadId?.message && (
+                  <small className="text-red-500">{String(errors.domicilio.localidadId.message)}</small>
+                )}
               </div>
 
               <Button
@@ -202,8 +163,7 @@ export default function DomicilioForm({
               </Button>
             </div>
           </div>
-        </div>
-      </FormProvider>
+      </div>
       {mostrarFormularioLocalidad && (
         <ModalPortal>
           <RegistrarActualizarLocalidadForm
