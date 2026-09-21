@@ -54,6 +54,38 @@ Cómo se comprobó que funciona. Qué quedó **sin** verificar.
 
 # Entradas
 
+## [2026-09-21] PA-028 — Pruebas de autorización de rutas privadas
+
+- **Tarjeta / CR:** PA-028 (escenario de autorización de rutas)
+- **Herramienta:** Claude Opus 5 vía Claude Code
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+Se solicita una prueba de frontend que valide los cuatro estados de acceso a una ruta protegida:
+1) sin token, 2) con token corrupto, 3) sin permiso, 4) con permiso. La intención es verificar el comportamiento real de `PrivateRoute` sin mezclarlo con otra lógica de negocio.
+
+### Respuesta / propuesta de la IA
+Se propuso una prueba con `vitest` + `@testing-library/react` y `MemoryRouter`, creando tokens JWT simulados con roles en payload. La validación se hizo por navegación real (`Navigate`) y render del `Outlet` para cada caso.
+
+### Decisión tomada
+Se aceptó una prueba paramétrica de cuatro escenarios, aislando cada caso con `localStorage.clear()` y `cleanup()`. La ruta protegida se valida con `allowedRoles={[1, 2]}` y se comprueba que el usuario sea redirigido a `/login` o a `/admin`, o que vea el contenido cuándo corresponde.
+
+### Qué se descartó y por qué
+- **Mockear `Navigate` o `useNavigate`:** se descartó porque prueba sólo la implementación mockeada y no el comportamiento real del router.
+- **Crear una lógica de permisos en la UI:** se descartó porque la regla vive en la validación del token y la ruta protegida, no en la vista.
+- **Asumir que el token siempre es válido:** se descartó porque el caso corrupto debe verificarse explícitamente para cubrir la validación real del JWT.
+
+### Modificaciones sobre lo generado
+Se agregó el archivo de prueba [src/utils/PrivateRoute.scenarios.test.tsx](src/utils/PrivateRoute.scenarios.test.tsx), dejando el caso de prueba aislado y reutilizable.
+
+### Impacto
+- Archivo nuevo: [src/utils/PrivateRoute.scenarios.test.tsx](src/utils/PrivateRoute.scenarios.test.tsx)
+- Configuración de test: [vite.config.ts](vite.config.ts) y [package.json](package.json)
+
+### Verificación
+Se ejecutó la prueba con `vitest run src/utils/PrivateRoute.scenarios.test.tsx` y se confirmó el comportamiento esperado para los cuatro escenarios. Si se desea, puede reutilizarse como base para pruebas de rutas en otras pantallas protegidas.
+
 ## [2026-09-18] PA-019 — Historial de precios por producto, en un modal de solo consulta
 
 - **Tarjeta / CR:** PA-019 (consume el endpoint de historial de CR-007)
