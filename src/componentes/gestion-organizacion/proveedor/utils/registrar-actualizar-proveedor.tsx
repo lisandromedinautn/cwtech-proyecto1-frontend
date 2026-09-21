@@ -8,11 +8,11 @@ import FormInput from "../../../herramientas/formateo-de-campos/form-input";
 import { Card } from "../../../ui/Card";
 import React from "react";
 import { CondicionIva, ResponsePost } from "../../../../interfaces/generales/interfaces-generales";
-import DomicilioForm, { DatosDomicilio } from "../../../herramientas/reutilizables/domicilio";
+import DomicilioForm from "../../../herramientas/reutilizables/domicilio";
 import { FormValues, schema, transformData } from "../interfaces/interfaces-validaciones-proveedor";
 import { Proveedor } from "../../../../interfaces/gestion-organizacion/proveedor/interfaces-proveedor";
 import ProveedorService from "../services/proveedor-service";
-import { parseApiError } from "../../../../utils/errores";
+import { applyApiErrorToForm } from "../../../../utils/errores";
 import { User } from "lucide-react";
 import { SelectCondicionIva } from "../../../../interfaces/gestion-organizacion/condicion-iva/interfaces-condicion-iva";
 import Select from "react-select";
@@ -28,10 +28,14 @@ export default function RegistrarActualizarProveedorForm({
   proveedor,
   onClose,
   onSuccess,
+  onNotify,
+  onRefresh,
 }: {
   proveedor?: Proveedor;
   onClose: () => void;
   onSuccess: (mensajeAlerta: string) => void;
+  onNotify?: (alert: { type: "error" | "warning"; title: string; message: string }) => void;
+  onRefresh?: () => Promise<void> | void;
 }) {
   //===================== CONSTANTES VARIAS ============================================
   const usuarioId = getUsuarioId();
@@ -40,7 +44,9 @@ export default function RegistrarActualizarProveedorForm({
 
   const methods = useForm<FormValues>({
     resolver: yupResolver(schema) as any,
-    defaultValues: proveedor ? transformData(proveedor) : {},
+    defaultValues: proveedor
+      ? transformData(proveedor)
+      : { domicilio: { direccion: "", provinciaId: 1, localidadId: 1 } },
   });
 
   const {
@@ -51,7 +57,6 @@ export default function RegistrarActualizarProveedorForm({
     watch,
   } = methods;
   const [condicionesIva, setCondicionesIva] = React.useState<CondicionIva[]>([]);
-  const [datosDomicilio, setDatosDomicilio] = useState<DatosDomicilio>();
   const [selectedCondicionIva, setSelectedCondicionIva] = React.useState<SelectCondicionIva>();
   const [denominacionCondicionIva, setDenominacionCondicionIva] = useState(" ");
 
@@ -96,7 +101,6 @@ export default function RegistrarActualizarProveedorForm({
         const payload = {
           ...formData,
           cuit: cuitLimpio,
-          domicilio: datosDomicilio,
           usuarioUpdatedId: usuarioId,
         };
 
@@ -105,7 +109,6 @@ export default function RegistrarActualizarProveedorForm({
         const payload = {
           ...formData,
           cuit: cuitLimpio,
-          domicilio: datosDomicilio,
           usuarioCreatedId: usuarioId,
         };
 
@@ -117,17 +120,9 @@ export default function RegistrarActualizarProveedorForm({
     } catch (error) {
       console.error("Error al guardar el proveedor:", error);
 
-      const errorMessage = parseApiError(error);
-
-      setError("root", {
-        type: "manual",
-        message: errorMessage,
-      });
+      const apiError = applyApiErrorToForm(error, setError, onNotify ?? (() => {}));
+      if (apiError.statusCode === 404) await onRefresh?.();
     }
-  };
-
-  const handleDomicilio = (datosDomicilio: DatosDomicilio) => {
-    setDatosDomicilio(datosDomicilio);
   };
 
   const handleBuscarPorDenominacion = async (select: string) => {
@@ -364,7 +359,7 @@ export default function RegistrarActualizarProveedorForm({
                 <p className="text-sm text-red-600">{(errors as any)[""].message}</p>
               )}
 
-              <DomicilioForm onDatos={handleDomicilio} datosDomicilioExistentes={proveedor?.domicilio} />
+              <DomicilioForm sistema={proveedor?.sistema} onNotify={onNotify} />
             </CardContent>
 
             {errors.root?.message && <div className="text-red-600 text-center mb-4">{String(errors.root.message)}</div>}

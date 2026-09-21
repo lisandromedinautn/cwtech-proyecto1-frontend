@@ -13,6 +13,11 @@ export interface FormValues {
   condicionIvaId: number;
   esProveedorGastos: boolean;
   esProveedorMateriaPrima: boolean;
+  domicilio: {
+    direccion: string;
+    provinciaId: number;
+    localidadId: number;
+  };
 }
 
 //===================== schema de validacion ============================================//
@@ -41,6 +46,11 @@ export const schema = yup.object().shape({
   condicionIvaId: yup.number().required("La Condicion Iva es obligatoria."),
   esProveedorGastos: yup.boolean().required(),
   esProveedorMateriaPrima: yup.boolean().required(),
+  domicilio: yup.object({
+    direccion: yup.string().required("Campo requerido"),
+    localidadId: yup.number().typeError("Campo requerido").required(),
+    provinciaId: yup.number().typeError("Campo requerido").required(),
+  }).required(),
 }).test(
   "al-menos-un-tipo",
   "Debe seleccionar al menos un tipo de proveedor (Gastos o Materia Prima).",
@@ -61,5 +71,10 @@ export const transformData = (proveedor: Proveedor): FormValues => {
     observacion: proveedor.observacion ?? null,
     esProveedorGastos: proveedor.esProveedorGastos ?? false,
     esProveedorMateriaPrima: proveedor.esProveedorMateriaPrima ?? false,
+    domicilio: {
+      direccion: proveedor.domicilio?.direccion ?? "",
+      provinciaId: proveedor.domicilio?.provinciaId ?? 1,
+      localidadId: proveedor.domicilio?.localidadId ?? 1,
+    },
   };
 };

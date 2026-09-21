@@ -1,4 +1,4 @@
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, get, useFormContext } from "react-hook-form";
 import { Label } from "@radix-ui/react-label";
 import { Input } from "../../ui/Input";
 import { useMask } from "@react-input/mask";
@@ -38,6 +38,7 @@ export default function FormInput({
     control,
     formState: { errors },
   } = useFormContext(); // Accede al contexto
+  const error = get(errors, name);
 
   // Hook de máscara (solo si se pasa mask)
   const maskRef = mask
@@ -79,7 +80,7 @@ export default function FormInput({
             />
           )}
         />
-        {errors[name] && <small className="text-red-500">{errors[name]?.message as string}</small>}
+        {error && <small className="text-red-500">{error.message as string}</small>}
       </div>
     </div>
   );

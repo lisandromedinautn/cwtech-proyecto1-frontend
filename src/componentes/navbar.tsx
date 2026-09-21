@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import axiosConfig from "../utils/axiosConfig";
 
 import { APP_CONFIG } from "../config/versionamiento";
+import logoCwtech from "../assets/imagenes/cwtech-logo.webp";
 
 import CambiarContrasenaModal from "./gestion-usuario/cambiar-contrasena-modal";
 import { ModalPortal } from "../utils/modal-portal";
@@ -151,12 +152,12 @@ export function Navbar({ className }: NavbarProps) {
           {/* Logo y Branding - Siempre visible */}
           <div className="flex items-center space-x-2 flex-shrink-0">
             <img
-              src="/JSFenix.png"
-              alt="Logo"
+              src={logoCwtech}
+              alt="Logo de CWTECH"
               className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full object-contain"
             />
             <div className="hidden sm:inline">
-              <h1 className="text-sm sm:text-base md:text-lg font-bold leading-tight">(Nombre de tu Equipo)</h1>
+              <h1 className="text-sm sm:text-base md:text-lg font-bold leading-tight">CWTECH</h1>
               <p className="text-xs text-gray-300 leading-tight">{APP_CONFIG.nombreSistema} {APP_CONFIG.version}</p>
             </div>
           </div>

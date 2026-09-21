@@ -2,11 +2,12 @@
 
 import type React from "react";
 import { useEffect, type ReactNode } from "react";
-import { User, Shield, Clock, CheckCircle, ArrowLeft, MapPin, Wheat } from "lucide-react";
+import { User, Shield, Clock, CheckCircle, ArrowLeft, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import AuthForm from "../componentes/gestion-usuario/auth-form";
 import { Button } from "../componentes/ui/Button";
 import { Badge } from "../componentes/ui/Badge";
+import logoCwtech from "../assets/imagenes/cwtech-logo.webp";
 
 interface LoginPageProps {
   children?: ReactNode;
@@ -24,10 +25,9 @@ const LoginPage: React.FC<LoginPageProps> = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Wheat className="h-8 w-8 text-principal" />
+              <img src={logoCwtech} alt="Logo de CWTECH" className="h-8 w-8 object-contain" />
               <div>
-                <h1 className="text-xl font-bold text-principalDark">Proyecto 1</h1>
-                <p className="text-xs text-onSurface/70">Productos para</p>
+                <h1 className="text-xl font-bold text-principalDark">CWTECH</h1>
               </div>
             </div>
             <nav className="hidden md:flex items-center space-x-6">
@@ -53,7 +53,7 @@ const LoginPage: React.FC<LoginPageProps> = () => {
 
               <div className="space-y-4">
                 <h1 className="text-4xl lg:text-5xl font-bold leading-tight text-principalDark">
-                  Bienvenido a <span className="text-principal">NOMBRE AQUI</span>
+                  Bienvenido a <span className="text-principal">CWTECH</span>
                 </h1>
                 <p className="text-lg text-onSurface/80 leading-relaxed">
                   Accede a tu cuenta para gestionar inventario, consultar datos y administrar tu negocio de manera
@@ -146,10 +146,9 @@ const LoginPage: React.FC<LoginPageProps> = () => {
           <div className="grid md:grid-cols-3 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <Wheat className="h-8 w-8 text-principal" />
+                <img src={logoCwtech} alt="Logo de CWTECH" className="h-8 w-8 object-contain" />
                 <div>
-                  <h3 className="text-xl font-bold">Proyecto 1</h3>
-                  <p className="text-sm text-darkText/80">Productos </p>
+                  <h3 className="text-xl font-bold">CWTECH</h3>
                 </div>
               </div>
             </div>
@@ -170,7 +169,7 @@ const LoginPage: React.FC<LoginPageProps> = () => {
           </div>
 
           <div className="border-t border-darkText/30 mt-8 pt-8 text-center text-darkText/70">
-            <p>&copy; 2025 Proyecto 1. Todos los derechos reservados.</p>
+            <p>&copy; 2025 CWTECH. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>
