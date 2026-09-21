@@ -17,6 +17,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ allowedRoles }) => {
   const token = localStorage.getItem("Token");
   const location = useLocation();
 
+  // Caso 1: no hay token -> nunca se intenta decodificar
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
