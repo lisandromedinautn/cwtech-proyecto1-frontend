@@ -37,6 +37,13 @@ export function DatosTabla({ lineas, onEditar, onInfo, onDelete }: Props) {
       accessor: "observacion",
       ...observacionesColumnProps,
     },
+    {
+      header: "SuperLínea",
+      accessor: "superlineaDenominacion",
+      formatFunction: ({ row }) => (
+        <span>{row.superlineaDenominacion ?? row.superlinea?.denominacion ?? "—"}</span>
+      ),
+    },
   ];
 
   return (
