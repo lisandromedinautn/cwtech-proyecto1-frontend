@@ -194,3 +194,48 @@ Frontend:
 - Modificados: `interfaces-linea.tsx`, `interfaces-superlinea.tsx`, `registrar-actualizar-linea.tsx`, `interfaces-validaciones-linea.tsx`, `datos-tabla.tsx` y `datos-card.tsx` de Línea, `filtros-linea.tsx`, `consultar-linea.tsx`, `App.tsx`, `menuItems-definicion.ts`.
 
 Backend: sin cambios en esta tarjeta.
+
+## [2026-09-21] PA-049 — Fondo del select de SuperLínea en admin
+
+- **Tarjeta / CR:** PA-049
+- **Herramienta:** OpenCode, openai/gpt-5.6-terra
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: en `/admin/linea`, al abrir el selector del filtro de SuperLíneas, las opciones deben
+tener un fondo visible porque actualmente se muestran sin fondo.
+
+### Respuesta / propuesta de la IA
+
+Se identificó que el filtro usa `SelectContentUI`, cuyo color temático `bg-popover` no resultaba
+visible en esta pantalla. Se propuso aplicar un fondo explícito solo a ese desplegable.
+
+### Decisión tomada
+
+Se agregaron las clases `bg-white dark:bg-slate-900` al `SelectContentUI` de
+`SuperlineaFiltro`. Así se preserva un fondo opaco y consistente en los temas claro y oscuro.
+
+### Qué se descartó y por qué
+
+- **Modificar el componente base `SelectUI`:** afectaría todos los selects del sistema cuando el
+  defecto visual solo fue reportado en el filtro de SuperLíneas.
+- **Cambiar variables globales de tema:** amplía el alcance y puede modificar popovers ajenos al
+  ticket.
+
+### Modificaciones sobre lo generado
+
+—
+
+### Impacto
+
+- Modificado: `src/componentes/gestion-producto/superlinea/componentes/superlinea-filtro.tsx`.
+- Backend, migraciones y endpoints: sin cambios.
+
+### Verificación
+
+- `yarn build`: correcto.
+- `git diff --check`: correcto.
+- `yarn lint`: sigue fallando por 21 errores preexistentes fuera de este archivo.
+- Sin verificación manual en navegador.
