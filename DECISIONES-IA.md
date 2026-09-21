@@ -194,3 +194,52 @@ Frontend:
 - Modificados: `interfaces-linea.tsx`, `interfaces-superlinea.tsx`, `registrar-actualizar-linea.tsx`, `interfaces-validaciones-linea.tsx`, `datos-tabla.tsx` y `datos-card.tsx` de Línea, `filtros-linea.tsx`, `consultar-linea.tsx`, `App.tsx`, `menuItems-definicion.ts`.
 
 Backend: sin cambios en esta tarjeta.
+
+## [2026-09-21] PA-050 — Añadir columna SuperLínea en admin de Líneas
+
+- **Tarjeta / CR:** PA-050
+- **Herramienta:** OpenCode, openai/gpt-5.6-terra
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: en `/admin/linea`, agregar a la tabla de Líneas una columna "SuperLínea" que muestre
+la asociación y confirmar si alcanza con los datos actuales del backend o requiere cambios de
+contrato.
+
+### Respuesta / propuesta de la IA
+
+Se revisó el handoff y los tipos del frontend. El contrato de `GET /linea/search-by` ya entrega
+`superlineaDenominacion` junto a `superlineaId`; se propuso renderizar ese dato en la tabla.
+
+### Decisión tomada
+
+No se modifica el backend. La tabla usa `superlineaDenominacion`, con respaldo a
+`superlinea?.denominacion` por compatibilidad con datos ya tipados.
+
+### Qué se descartó y por qué
+
+- **Agregar o cambiar un endpoint:** el contrato existente ya contiene la denominación necesaria;
+  una consulta adicional sería redundante.
+- **Resolver la denominación a partir de `superlineaId` en la UI:** duplica datos que el backend
+  ya entrega y puede desincronizar la visualización.
+
+### Modificaciones sobre lo generado
+
+—
+
+### Impacto
+
+- Modificado: `src/componentes/gestion-producto/linea/componentes/datos-tabla.tsx`.
+- Backend, migraciones y endpoints: sin cambios.
+
+### Verificación
+
+- `yarn build`: correcto.
+- `git diff --check`: correcto.
+- `yarn lint`: sigue fallando por 21 errores preexistentes fuera de estos archivos (por ejemplo,
+  `.opencode/plugins/kdco-primitives/shell.ts`, servicios de Cliente/Proveedor/Usuario y
+  componentes reutilizables). No informó errores en el componente modificado.
+- Sin verificación manual en navegador; la confirmación del contrato se realizó contra el handoff
+  `PA-029_Handoff.md` y la interfaz `Linea` del frontend.
