@@ -56,7 +56,7 @@ export default function SuperlineaFiltro({ value, onChange, label = "SuperLínea
             placeholder={loading ? "Cargando..." : "Todas las SuperLíneas"}
           />
         </SelectTriggerUI>
-        <SelectContentUI>
+        <SelectContentUI className="bg-white dark:bg-slate-900">
           <SelectItemUI value={VALOR_TODAS}>Todas las SuperLíneas</SelectItemUI>
           {opciones.map((opcion) => (
             <SelectItemUI key={opcion.id} value={String(opcion.id)}>

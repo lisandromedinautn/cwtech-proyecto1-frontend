@@ -195,35 +195,34 @@ Frontend:
 
 Backend: sin cambios en esta tarjeta.
 
-## [2026-09-21] PA-050 — Añadir columna SuperLínea en admin de Líneas
+## [2026-09-21] PA-049 — Fondo del select de SuperLínea en admin
 
-- **Tarjeta / CR:** PA-050
+- **Tarjeta / CR:** PA-049
 - **Herramienta:** OpenCode, openai/gpt-5.6-terra
 - **Autor/a que condujo la sesión:** —
 - **Link a la conversación:** no disponible (CLI)
 
 ### Prompt
 
-Síntesis: en `/admin/linea`, agregar a la tabla de Líneas una columna "SuperLínea" que muestre
-la asociación y confirmar si alcanza con los datos actuales del backend o requiere cambios de
-contrato.
+Síntesis: en `/admin/linea`, al abrir el selector del filtro de SuperLíneas, las opciones deben
+tener un fondo visible porque actualmente se muestran sin fondo.
 
 ### Respuesta / propuesta de la IA
 
-Se revisó el handoff y los tipos del frontend. El contrato de `GET /linea/search-by` ya entrega
-`superlineaDenominacion` junto a `superlineaId`; se propuso renderizar ese dato en la tabla.
+Se identificó que el filtro usa `SelectContentUI`, cuyo color temático `bg-popover` no resultaba
+visible en esta pantalla. Se propuso aplicar un fondo explícito solo a ese desplegable.
 
 ### Decisión tomada
 
-No se modifica el backend. La tabla usa `superlineaDenominacion`, con respaldo a
-`superlinea?.denominacion` por compatibilidad con datos ya tipados.
+Se agregaron las clases `bg-white dark:bg-slate-900` al `SelectContentUI` de
+`SuperlineaFiltro`. Así se preserva un fondo opaco y consistente en los temas claro y oscuro.
 
 ### Qué se descartó y por qué
 
-- **Agregar o cambiar un endpoint:** el contrato existente ya contiene la denominación necesaria;
-  una consulta adicional sería redundante.
-- **Resolver la denominación a partir de `superlineaId` en la UI:** duplica datos que el backend
-  ya entrega y puede desincronizar la visualización.
+- **Modificar el componente base `SelectUI`:** afectaría todos los selects del sistema cuando el
+  defecto visual solo fue reportado en el filtro de SuperLíneas.
+- **Cambiar variables globales de tema:** amplía el alcance y puede modificar popovers ajenos al
+  ticket.
 
 ### Modificaciones sobre lo generado
 
@@ -231,15 +230,12 @@ No se modifica el backend. La tabla usa `superlineaDenominacion`, con respaldo a
 
 ### Impacto
 
-- Modificado: `src/componentes/gestion-producto/linea/componentes/datos-tabla.tsx`.
+- Modificado: `src/componentes/gestion-producto/superlinea/componentes/superlinea-filtro.tsx`.
 - Backend, migraciones y endpoints: sin cambios.
 
 ### Verificación
 
 - `yarn build`: correcto.
 - `git diff --check`: correcto.
-- `yarn lint`: sigue fallando por 21 errores preexistentes fuera de estos archivos (por ejemplo,
-  `.opencode/plugins/kdco-primitives/shell.ts`, servicios de Cliente/Proveedor/Usuario y
-  componentes reutilizables). No informó errores en el componente modificado.
-- Sin verificación manual en navegador; la confirmación del contrato se realizó contra el handoff
-  `PA-029_Handoff.md` y la interfaz `Linea` del frontend.
+- `yarn lint`: sigue fallando por 21 errores preexistentes fuera de este archivo.
+- Sin verificación manual en navegador.
