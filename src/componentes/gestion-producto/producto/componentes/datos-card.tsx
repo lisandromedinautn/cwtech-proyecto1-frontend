@@ -3,6 +3,7 @@ import type { ConsultarProducto } from "../../../../interfaces/gestion-producto/
 import { formatPrice } from "../../../herramientas/formateo-de-campos/fucion-formateo";
 import { ActionButton } from "../../../herramientas/reutilizables/action-button";
 import { ProductoActions } from "./producto-action";
+import { textoPresentacion } from "../domain/presentacion-producto";
 
 
 interface Props {
@@ -37,6 +38,12 @@ export function DatosCard({
         <p className="text-sm font-medium text-gray-800 line-clamp-2">
           {producto.denominacion}
         </p>
+      </div>
+
+      {/* Presentación (CR-002) */}
+      <div className="mb-2">
+        <p className="text-xs text-gray-500">Presentación</p>
+        <p className="text-sm text-gray-700">{textoPresentacion(producto.presentacion)}</p>
       </div>
 
       {/* Proveedor */}

@@ -4,6 +4,14 @@ import { SelectSublinea } from "../sublinea/interfaces-sublinea";
 import { ItemProdAlternativo } from "./interfaces-item-prod-alternativo";
 import { ItemProveedor } from "./interfaces-item-proveedor";
 
+// Presentación del producto (CR-002) tal como la devuelve el backend:
+// envase + contenido, más el texto canónico ("BOTELLA 500 ml").
+export interface PresentacionProducto {
+  envase: { id: number; denominacion: string };
+  contenido: { cantidad: number; unidad: string };
+  texto: string;
+}
+
 export interface Producto {
   //
   id: number;
@@ -52,6 +60,8 @@ export interface Producto {
   cantidadPorPack: number;
   utilizaStockMinimo: boolean;
   utilizaPack: boolean;
+  // null en productos cargados antes de CR-002.
+  presentacion?: PresentacionProducto | null;
  // oferta: boolean;
  // cantidadOferta: number;
  /*  porcentajeOcasional: number;
@@ -84,6 +94,7 @@ export interface ConsultarProducto {
   precioMayoristaConIva: number;
   precioClienteConIva: number;
   precioOfertaConIva: number;
+  presentacion?: PresentacionProducto | null;
 }
 
 
@@ -105,6 +116,7 @@ export interface ConsultarProductosCambioPreciosMasivo {
 
   dirty: boolean;
 
+  presentacion?: PresentacionProducto | null;
 }
 
 export interface ConsultarProductosListaPrecios {
