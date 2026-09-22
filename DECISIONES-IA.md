@@ -344,3 +344,70 @@ decimal, la obligatoriedad en la edición, la presentación en el listado y el n
   tabla y tarjetas. Las 5 pruebas pasaron.
 - **Sin verificar a mano:** la columna de presentación en cambio de precios masivo, agregada
   después de esa prueba. Quedó cubierta por `tsc` y el build, sin test propio.
+
+## [2026-09-22] PA-025 — Auditoría de la implementación de Presentación
+
+- **Tarjeta / CR:** PA-025, CR-002, US-02
+- **Herramienta:** OpenCode, openai/gpt-5.6-terra
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Auditar el código generado en la rama para PA-025: verificar los criterios de aceptación,
+la correspondencia con el contrato backend, la calidad de la implementación y cómo probarla
+manualmente.
+
+### Respuesta / propuesta de la IA
+
+Se revisó el commit `3659052`, los flujos de alta, edición, listados y el ABM de envases,
+las pruebas del frontend y el contrato real de PA-024/PA-023 en el backend. Se propuso
+reportar los hallazgos sin modificar el comportamiento funcional durante una auditoría.
+
+### Decisión tomada
+
+Se acepta como cubierto el contrato estructural: el frontend envía
+`presentacion: { envaseId, cantidad, unidad }`, precarga la respuesta canónica del backend,
+muestra `texto` en listados y direcciona errores `PRESENTACION_INVALIDA`,
+`PRESENTACION_REQUERIDA` y `VALIDACION_DTO` al formulario. Se deja abierto un defecto de
+validación para corregir antes de considerar PA-025 plenamente aceptada.
+
+### Qué se descartó y por qué
+
+- **Dar la tarjeta por completamente aprobada:** se descartó porque `NumericFormat` trunca
+  automáticamente más de dos decimales. Por ejemplo, el usuario puede ingresar `1.255 L` y
+  la UI lo convierte a `1.25`, evitando el rechazo `PRESENTACION_INVALIDA` que el contrato
+  exige informar claramente. No es una validación, sino una modificación silenciosa del dato.
+- **Duplicar las reglas R1-R4 en React:** se descartó; el backend es la fuente de verdad para
+  las reglas de dominio. La corrección debe conservar el valor ingresado o informarle al
+  usuario el exceso de decimales, sin normalizarlo silenciosamente.
+- **Corregir el código funcional durante la auditoría:** se descartó para mantener separadas
+  la revisión y la implementación; el hallazgo queda listo para una corrección y un test de
+  regresión específicos.
+
+### Modificaciones sobre lo generado
+
+- Se agregó únicamente esta evidencia de auditoría en `DECISIONES-IA.md`.
+
+### Impacto
+
+- Hallazgo: `src/componentes/gestion-producto/producto/componentes/configuracion/presentacion-producto.tsx:73`
+  usa `decimalScale={2}`; el test actual en
+  `src/componentes/gestion-producto/producto/utils/registrar-actualizar-producto.test.tsx:254`
+  afirma el truncamiento.
+- Sin cambios en backend, endpoints, DTOs ni migraciones.
+
+### Verificación
+
+- Contrato contrastado con
+  `cwtech-proyecto1-backend/src/modules/gestion-productos/producto/dto/presentacion.dto.ts`
+  y `domain/value-objects/medida.vo.ts`: `L` y `kg` admiten como máximo dos decimales;
+  `ml`, `g` y `unidades` no admiten decimales.
+- Pruebas focalizadas: 4 archivos, 18 tests en verde (`registrar-actualizar-producto`,
+  `datos-card`, formulario de envase y menú).
+- `yarn build`: correcto.
+- `yarn test`: no queda completamente verde por 4 fallos preexistentes en
+  `src/utils/PrivateRoute.test.tsx`; el entorno no inicializa `localStorage` y falla antes de
+  ejecutar sus aserciones. Las 47 pruebas restantes pasan.
+- Sin prueba manual nueva contra el backend en esta auditoría; se debe ejecutar el caso de
+  más de dos decimales al corregir el defecto.
