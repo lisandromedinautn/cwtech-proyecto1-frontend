@@ -13,6 +13,7 @@ import ConsultarProveedores from "./componentes/gestion-organizacion/proveedor/u
 import ConsultarLocalidad from "./componentes/gestion-organizacion/localidad/utils/consultar-localidad";
 import ConsultarLinea from "./componentes/gestion-producto/linea/utils/consultar-linea";
 import ConsultarSuperlinea from "./componentes/gestion-producto/superlinea/utils/consultar-superlinea";
+import ConsultarEnvasesPresentacion from "./componentes/gestion-producto/envase-presentacion/utils/consultar-envase-presentacion";
 
 import PrivateRoute from "./utils/PrivateRoute";
 import { Rol } from "./interfaces/generales/interfaces-generales";
@@ -40,6 +41,7 @@ function App() {
               <Route index element={<DashboardHome />} />
               <Route element={<PrivateRoute allowedRoles={[Rol.EMPLEADO, Rol.ADMINISTRADOR]} />}>
                 <Route path="marca" element={<ConsultarMarcas />} />
+                <Route path="envase-presentacion" element={<ConsultarEnvasesPresentacion />} />
               </Route>
 
               <Route path="linea" element={<ConsultarLinea />} />
