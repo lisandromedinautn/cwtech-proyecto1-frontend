@@ -170,7 +170,7 @@ export default function ConsultarProductos() {
         title: "Stock crítico",
         message: `El producto ${producto.denominacion} se encuentra bajo el stock crítico.`,
         autoClose: true,
-        duration: 6000,
+        duration: 3000,
       });
     });
   };
