@@ -34,6 +34,7 @@ import { getAuthData, getRoles, getUsuarioId } from "../../../../utils/auth";
 import { puedeHacerAcciones } from "../domain/permisos-producto";
 import ProveedorService from "../../../gestion-organizacion/proveedor/services/proveedor-service";
 import { getApiErrorCategory, getApiErrorMessage, normalizeApiError } from "../../../../utils/errores";
+import { useNotificaciones } from "../../../../context/notificaciones-context";
 
 
 export default function ConsultarProductos() {
@@ -54,6 +55,7 @@ export default function ConsultarProductos() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalAbierto, setModalAbierto] = useState<boolean>(false);
   const [productoNotificacionSeleccionado, setProductoNotificacionSeleccionado] = useState<ProductoNotificacion | null>(null);
+  const notificadosStockCriticoRef = useRef<Set<number>>(new Set());
   const usuarioId = getUsuarioId();
   const { configuracion } = useConfiguracionSistema();
   const [codigo, setCodigo] = useState<string>("");
@@ -90,6 +92,13 @@ export default function ConsultarProductos() {
   } = useFiltrosContext();
 
   const filtrosInicialesConsultarProducto = useFiltrosIniciales("consultar-producto");
+
+  // =========================
+  // ALERTAS / CONFIRMACIONES
+  // =========================
+  const { alerts, addAlert, removeAlert } = useAlerts();
+  const { agregarNotificacion } = useNotificaciones();
+  const { showConfirmation, AlertasConfirmacion } = useConfirmation();
 
     // Contexto de catálogos
   const {
@@ -131,16 +140,49 @@ export default function ConsultarProductos() {
     }
   }, [buscar]);
 
+  const mostrarAlertasStockCritico = (items: ConsultarProducto[]) => {
+    const productosEnAlerta = items.filter((producto) => {
+      const productoConStockMinimo = producto as ConsultarProducto & {
+        stockMinimo?: number;
+        utilizaStockMinimo?: boolean;
+      };
+
+      const stock = Number(producto.stock ?? 0);
+      const stockMinimo = Number(productoConStockMinimo.stockMinimo ?? 0);
+      const utilizaStockMinimo = Boolean(productoConStockMinimo.utilizaStockMinimo ?? false);
+
+      return utilizaStockMinimo && stock <= stockMinimo;
+    });
+
+    productosEnAlerta.forEach((producto) => {
+      const id = Number(producto.id);
+      if (notificadosStockCriticoRef.current.has(id)) return;
+
+      notificadosStockCriticoRef.current.add(id);
+      agregarNotificacion({
+        id: `stock-critico-${id}`,
+        title: "Stock crítico",
+        message: `El producto ${producto.denominacion} se encuentra bajo el stock crítico.`,
+        type: "warning",
+      });
+      addAlert({
+        type: TipoAlerta.WARNING,
+        title: "Stock crítico",
+        message: `El producto ${producto.denominacion} se encuentra bajo el stock crítico.`,
+        autoClose: true,
+        duration: 6000,
+      });
+    });
+  };
+
+  useEffect(() => {
+    mostrarAlertasStockCritico(productos);
+  }, [productos, agregarNotificacion]);
+
   // MANEJO DE FILTROS ========================================================
 
 
 
-    // =========================
-  // ALERTAS / CONFIRMACIONES
-  // =========================
-  const { alerts, addAlert, removeAlert } = useAlerts();
-  const { showConfirmation, AlertasConfirmacion } = useConfirmation();
-  
   // =========================
     // IMPRESIÓN
     // =========================
