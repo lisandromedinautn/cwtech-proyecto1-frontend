@@ -453,10 +453,27 @@ export default function ConsultarProductos() {
       take: take,
     };
 
-    const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
-    setProductos(productosFiltrados.data);
-    setEntidadesTotales(productosFiltrados.total);
-    setLoading(false);
+    try {
+      const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
+      setProductos(productosFiltrados.data);
+      setEntidadesTotales(productosFiltrados.total);
+    } catch (err: unknown) {
+      notificarErrorBusqueda(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const notificarErrorBusqueda = (err: unknown) => {
+    setProductos([]);
+    setEntidadesTotales(0);
+    addAlert({
+      type: TipoAlerta.ERROR,
+      title: TituloAlerta.ERROR,
+      message: getApiErrorMessage(normalizeApiError(err)),
+      autoClose: true,
+      duration: 3000,
+    });
   };
 
   const handleBuscarProductosRapido = async (botonBuscar?: boolean) => {
@@ -473,10 +490,15 @@ export default function ConsultarProductos() {
       take: take,
     };
 
-    const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
-    setProductos(productosFiltrados.data);
-    setEntidadesTotales(productosFiltrados.total);
-    setLoading(false);
+    try {
+      const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
+      setProductos(productosFiltrados.data);
+      setEntidadesTotales(productosFiltrados.total);
+    } catch (err: unknown) {
+      notificarErrorBusqueda(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // MANEJO DE PAGINACION ===========================================
