@@ -194,3 +194,130 @@ Frontend:
 - Modificados: `interfaces-linea.tsx`, `interfaces-superlinea.tsx`, `registrar-actualizar-linea.tsx`, `interfaces-validaciones-linea.tsx`, `datos-tabla.tsx` y `datos-card.tsx` de Línea, `filtros-linea.tsx`, `consultar-linea.tsx`, `App.tsx`, `menuItems-definicion.ts`.
 
 Backend: sin cambios en esta tarjeta.
+
+## [2026-09-23] PA-020 — Filtro "Exacto" de producto: booleanos de query, búsqueda rápida solo por código y filtro lateral acumulable
+
+- **Tarjeta / CR:** PA-020 (rama `Pa-020-Testing`); hallazgos 6 y 7 del informe de testing del equipo
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: analizar a fondo el checkbox "Exacto" de la pantalla de productos, presente en el
+buscador rápido del header y en el filtro lateral. Síntomas reportados: al clickear el "Exacto"
+del header la aplicación "explota"; en el filtro lateral la búsqueda exacta anda, pero al
+destildarlo y buscar "DEMO" no trae nada. El informe de un colega señalaba además que la búsqueda
+no exacta del header también buscaba por denominación. Después del análisis, el equipo decidió:
+la búsqueda rápida es **únicamente por código**; el filtro lateral es **acumulable (AND)**; dejar
+las decisiones documentadas en este archivo (y crear uno equivalente en el back).
+
+### Respuesta / propuesta de la IA
+
+Reprodujo los dos síntomas contra el backend local y encontró una **única causa raíz en el back**,
+no en la generalización del filtro lateral:
+
+- `main.ts` usa `ValidationPipe` con `enableImplicitConversion: true`. Con `class-transformer`
+  0.5.1 esa conversión corre **antes** del `@Transform` del DTO y hace `Boolean("false") === true`.
+  El `@Transform` nunca recibe el string original.
+- Header (`GET /producto/search-by-rapido`): el `@Transform` de `exacto` solo aceptaba los strings
+  `'true'`/`'false'`, recibía un booleano y devolvía `undefined`, así que el endpoint respondía
+  **400 siempre**, con `exacto` en `true` o en `false`. En el front, `handleBuscarProductosRapido`
+  no tenía `try/catch`: `setLoading(false)` nunca se ejecutaba y la pantalla quedaba en
+  "Cargando productos..." con el header desmontado. Eso era el "explota".
+- Filtro lateral (`GET /producto/search-by`): `codProveedorExacto=false` llegaba como `true`, por lo
+  que **siempre buscaba exacto** (`= 'DEMO'` en vez de `LIKE '%DEMO%'`). `conStock` tenía el mismo
+  `@Transform` que `exacto`, así que "Solo con stock" nunca se aplicaba.
+- Además, el filtro lateral unía denominación, código y código de referencia con `OR`, y la
+  búsqueda rápida no exacta incluía `denominacion`.
+
+Propuso un decorador compartido `@ToBoolean()` que lee el valor crudo (`obj[key]`), corregir la
+semántica de ambas queries y agregar manejo de errores en el front. Dejó al equipo las decisiones
+de semántica.
+
+### Decisión tomada
+
+- **Búsqueda rápida (header): solo por código.** Exacto → `codigoProveedor = :codigo OR
+  codigoReferencia = :codigo`. No exacto → `LIKE '%codigo%'` sobre esos mismos dos campos. Se quitó
+  `denominacion`: para eso está el filtro de denominación.
+- **Filtro lateral: acumulable.** Cada criterio cargado se agrega con `AND` (denominación, código
+  de proveedor, código de referencia, línea, marca, proveedor, con stock).
+- **Booleanos de query:** nuevo `@ToBoolean()` en el back, aplicado a `exacto`,
+  `codProveedorExacto`, `codReferenciaExacto` y `conStock`.
+- **Front:** `handleBuscarProductos` y `handleBuscarProductosRapido` ahora usan
+  `try/catch/finally`. Ante un error vacían la tabla, muestran una alerta con el mensaje del backend
+  y siempre apagan el `loading`.
+
+### Qué se descartó y por qué
+
+- **Arreglarlo en el front (mandar `1`/`0` o no mandar el flag):** esconde el bug. Cualquier otro
+  cliente, o Swagger, seguiría recibiendo `false` como `true`.
+- **Sacar `enableImplicitConversion` de `main.ts`:** es global, y otros DTOs dependen de él para
+  convertir números de la query sin `@Type`. El riesgo de romper otros endpoints era alto para este
+  alcance.
+- **Mantener `denominacion` en la búsqueda rápida:** el input dice "Código..." y el equipo definió
+  que es solo por código.
+- **Mantener el `OR` en el filtro lateral:** con varios criterios cargados devolvía la unión y no
+  la intersección, contra lo que espera un filtro combinado.
+- **Culpar a la generalización del filtro lateral:** la decisión de abandonarlo sigue en pie, pero
+  el bug estaba en el DTO del back. Sacar solo el sidebar habría dejado el header tirando 400.
+
+### Modificaciones sobre lo generado
+
+Ninguna por ahora; pendiente de revisión del equipo.
+
+### Impacto
+
+Frontend:
+- `src/componentes/gestion-producto/producto/utils/consultar-producto.tsx`: manejo de errores en las
+  dos búsquedas (`notificarErrorBusqueda`).
+
+Backend (detalle en `DECISIONES-IA.md` del back):
+- Nuevo `src/modules/common/decorators/to-boolean.decorator.ts`.
+- `producto/dto/search-producto-rapido.dto.ts` y `search-producto-pagination-with.dto.ts`: usan
+  `@ToBoolean()`.
+- `producto/infraestructure/repositories/producto.persistence-adapters.ts`: `findBy` con `AND`;
+  `findByRapido` sin `denominacion`.
+- `producto/application/controllers/producto.http.spec.ts`: el `ValidationPipe` del test ahora
+  replica el de `main.ts` (`enableImplicitConversion`), más 5 tests de regresión.
+
+Contrato: los endpoints y DTOs no cambian de forma, pero sí de **resultado**. La búsqueda rápida ya
+no matchea por denominación, y el filtro lateral con varios criterios devuelve la intersección.
+
+### Verificación
+
+- Back: `jest` con 49 suites y 185 tests en verde (antes 180). Los 5 tests nuevos se corrieron
+  también **sin** el fix de los DTOs: 4 fallan, lo que confirma que detectan el bug.
+- Back, en vivo contra el server local con el usuario `administrador@gmail.com`:
+  `search-by-rapido` responde 200 con `exacto` en `true` y en `false`; `ACE` no exacto trae
+  `ACE-001` y `aceite` ya no trae nada (no busca por denominación); en `search-by`,
+  `codProveedorExacto=false` hace `LIKE` y `denominacion=ACEITE` + `codigoProveedor=HAR` devuelve 0
+  (intersección).
+- Front: `vitest run` con 11 archivos y 35 tests en verde. `tsc --noEmit -p tsconfig.app.json` da
+  125 errores antes y después, ninguno nuevo. ESLint no marca nada nuevo; los 3 `no-empty` de
+  `consultar-producto.tsx` son preexistentes (`finally {}` vacíos de `fetchLineas`, `fetchMarcas`
+  y `fetchProveedores`).
+- **Sin verificar:** la pantalla en el navegador (no hubo prueba manual de la UI en esta sesión) y
+  el caso de `conStock=true` con productos sin stock (los datos semilla tienen stock en todos). No
+  hay test de front para `consultar-producto.tsx`.
+
+### Deuda técnica detectada y no resuelta
+
+- `incluirEliminados` usa el mismo patrón roto (`value === 'true' || value === true`) en
+  `pagination-with-denominacion.dto.ts`, `denominacion-empresa-operador.dto.ts` y
+  `search-localidad.dto.ts`: mandar `false` equivale a `true`. Se arregla con `@ToBoolean()`, pero
+  queda fuera del alcance de producto.
+- `codReferenciaExacto` se recibe en `search-by` pero el controller lo ignora; la referencia
+  siempre va con `LIKE`.
+- **Paginación y foco en `consultar-producto.tsx`.** El equipo decidió no corregirlos en esta
+  tarjeta y dejarlos como deuda técnica explícita:
+  - `resetearPaginacion()` no afecta al request que sale en la misma llamada: usa el `skip`
+    anterior, así que una búsqueda lanzada desde la página 3 pide el offset de la página 3.
+  - El effect de paginación siempre llama a `handleBuscarProductos` (filtro lateral), nunca a la
+    búsqueda rápida. Al paginar después de una búsqueda rápida se pierde ese filtro. Además,
+    cuando `resetearPaginacion` cambia `paginaActual`, dispara una segunda búsqueda que pisa los
+    resultados de la rápida.
+  - Mientras `loading` es `true`, el spinner reemplaza todo el card, header incluido. El input de
+    código se desmonta y pierde el foco en cada búsqueda con debounce.
+- El buscador de productos reutilizable (`busqueda-producto.tsx`) llama a endpoints
+  `search-productos-by-rapido` de otros módulos que el back actual no expone.
