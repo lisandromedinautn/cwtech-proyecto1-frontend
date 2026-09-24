@@ -303,7 +303,8 @@ export default function ConsultarProductos() {
     const confirmed = await showConfirmation({
       type: TipoAlertaConfirmacion.DESTRUCTIVE,
       title: TituloAlertaConfirmacion.DESTRUCTIVE,
-      message: "¿Estás seguro de que quieres eliminar este elemento? Esta acción no se puede deshacer.",
+      message:
+        "¿Querés eliminar este producto? Dejará de aparecer en el listado; podés volver a verlo activando \"Mostrar eliminados\".",
       confirmText: "Eliminar",
       cancelText: "Cancelar",
       onConfirm: () => {},
@@ -692,10 +693,11 @@ export default function ConsultarProductos() {
                 onChange={handlePageChange}
               />
             </div>
-            <Alertas alerts={alerts} onRemove={removeAlert} />
-            <AlertasConfirmacion />
           </>
         )}
+        {/* Fuera del loading: si no, una alerta desaparece apenas se relanza la búsqueda. */}
+        <Alertas alerts={alerts} onRemove={removeAlert} />
+        <AlertasConfirmacion />
       </div>
 
       {/* ================= MODALES ================= */}
