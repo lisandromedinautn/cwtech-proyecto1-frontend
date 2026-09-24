@@ -34,6 +34,7 @@ import { getAuthData, getRoles, getUsuarioId } from "../../../../utils/auth";
 import { puedeHacerAcciones } from "../domain/permisos-producto";
 import ProveedorService from "../../../gestion-organizacion/proveedor/services/proveedor-service";
 import { getApiErrorCategory, getApiErrorMessage, normalizeApiError } from "../../../../utils/errores";
+import { textoPresentacion } from "../domain/presentacion-producto";
 import { useNotificaciones } from "../../../../context/notificaciones-context";
 
 
@@ -485,10 +486,27 @@ export default function ConsultarProductos() {
       take: take,
     };
 
-    const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
-    setProductos(productosFiltrados.data);
-    setEntidadesTotales(productosFiltrados.total);
-    setLoading(false);
+    try {
+      const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
+      setProductos(productosFiltrados.data);
+      setEntidadesTotales(productosFiltrados.total);
+    } catch (err: unknown) {
+      notificarErrorBusqueda(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const notificarErrorBusqueda = (err: unknown) => {
+    setProductos([]);
+    setEntidadesTotales(0);
+    addAlert({
+      type: TipoAlerta.ERROR,
+      title: TituloAlerta.ERROR,
+      message: getApiErrorMessage(normalizeApiError(err)),
+      autoClose: true,
+      duration: 3000,
+    });
   };
 
   const handleBuscarProductosRapido = async (botonBuscar?: boolean) => {
@@ -505,10 +523,15 @@ export default function ConsultarProductos() {
       take: take,
     };
 
-    const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
-    setProductos(productosFiltrados.data);
-    setEntidadesTotales(productosFiltrados.total);
-    setLoading(false);
+    try {
+      const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
+      setProductos(productosFiltrados.data);
+      setEntidadesTotales(productosFiltrados.total);
+    } catch (err: unknown) {
+      notificarErrorBusqueda(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // MANEJO DE PAGINACION ===========================================
