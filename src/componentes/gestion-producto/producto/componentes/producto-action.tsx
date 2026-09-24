@@ -34,15 +34,29 @@ export function ProductoActions({
  
   compact = false,
 }: Props) {
+  const botonInfo = (
+    <ActionButton
+      variant="info"
+      title="Ver información"
+      onClick={() => onInfo(producto.id)}
+    >
+      <Info size={16} />
+    </ActionButton>
+  );
+
+  // Un producto dado de baja solo se consulta: el backend rechaza editarlo,
+  // ajustarle stock, ver su historial o volver a eliminarlo.
+  if (producto.eliminado) {
+    return (
+      <div className={`flex items-center gap-1 ${compact ? "justify-end" : ""}`}>
+        {botonInfo}
+      </div>
+    );
+  }
+
   return (
     <div className={`flex items-center gap-1 ${compact ? "justify-end" : ""}`}>
-      <ActionButton
-        variant="info"
-        title="Ver información"
-        onClick={() => onInfo(producto.id)}
-      >
-        <Info size={16} />
-      </ActionButton>
+      {botonInfo}
 
       {onHistorial && (
         <ActionButton

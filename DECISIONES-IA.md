@@ -687,3 +687,92 @@ Ninguna por ahora; pendiente de revisión del equipo.
   testing). El test "sin modificaciones" falla con el código anterior, porque el bloque aparecía
   siempre.
 - **Sin verificar:** el modal en el navegador.
+
+## [2026-09-24] PA-055 — Soft delete de productos: la baja se guarda y los eliminados se pueden consultar
+
+- **Tarjeta / CR:** PA-055
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+- **Repos:** back y front; la misma entrada está en el `DECISIONES-IA.md` de cada uno.
+
+### Prompt
+
+Síntesis: al eliminar un producto no pasa nada. Analizar qué guarda el soft delete y por qué no se
+refleja en el front. Agregar un booleano al lado de filtrados/mostrados para ver los productos
+eliminados, y que en la "I" de esos productos aparezca "Eliminado por" en rojo, con los mismos
+datos que los otros bloques.
+
+### Respuesta / propuesta de la IA
+
+- **Back:** `ProductoService.remove` marcaba `deletedAt` y `usuarioDeleted` y después llamaba a
+  `repository.remove()`. El adapter rechaza con 404 "Entidad ya eliminada." todo producto que ya
+  trae `deletedAt`, así que la baja nunca se guardaba. Reproducido en vivo: `DELETE /producto/7`
+  respondía 404 y la fila quedaba intacta. El bug está desde `a07ce54f` (11/09). En envase y en el
+  resto de las entidades, el que marca la baja es el adapter.
+- **Front:** la alerta del 404 sí aparecía, pero `handleDelete` relanzaba la búsqueda, el spinner
+  desmontaba las alertas (estaban dentro de la rama "no está cargando") y desaparecía al instante.
+- **Consulta de eliminados:** las dos búsquedas filtraban siempre `deletedAt IS NULL`. La
+  auditoría (`findByIdConAuditoria`) no filtra, así que la "I" funciona para un eliminado.
+- **El modal ya tenía** un bloque "Eliminado" en rojo que nunca se veía. Como la baja pisa
+  `updatedAt`, el bloque de actualización mostraría la fecha de la baja con el editor anterior.
+
+### Decisión tomada
+
+- **Back:**
+  - El adapter recibe el usuario y marca la baja (`remove(producto, usuario)`), igual que envase.
+  - `incluirEliminados` (con `@ToBoolean(false)`) en `search-by` y `search-by-rapido`, como último
+    parámetro con valor por defecto, para no romper la firma posicional.
+  - `eliminado` en cada producto del listado.
+- **Front:**
+  - Toggle "Mostrar eliminados" junto a filtrados/mostrados, en los dos headers; al cambiarlo se
+    relanza la búsqueda activa (rápida o filtrada).
+  - Los eliminados se marcan con "Eliminado" en rojo y solo ofrecen "Ver información".
+  - Las alertas quedan fuera del spinner, y la confirmación explica que es una baja lógica.
+  - En el modal, para un registro eliminado se reemplaza "Actualizado" por "Eliminado por" en rojo.
+- **Semántica del toggle:** *incluye* los eliminados junto a los activos, no muestra "solo
+  eliminados". Es la misma convención que `incluirEliminados` en los DTOs comunes del back.
+
+### Qué se descartó y por qué
+
+- **Arreglarlo sacando el chequeo del adapter:** se perdía la protección contra dar de baja dos
+  veces. Además, el resto de las entidades ya usa el patrón de que el adapter marque la baja.
+- **Toggle de "solo eliminados":** duplica la búsqueda y rompe la convención de `incluirEliminados`.
+  Se puede agregar después si el equipo lo pide.
+- **Permitir editar, ajustar stock o ver el historial de un eliminado:** esos endpoints usan
+  `findOne`, que filtra `deletedAt`, y responderían 404. Restaurar un producto queda fuera del
+  alcance de PA-055.
+- **Evitar que la baja pise `updatedAt`:** requiere una actualización a medida que saltee
+  `@UpdateDateColumn`. Se resolvió en la vista, reemplazando el bloque.
+
+### Modificaciones sobre lo generado
+
+Ninguna por ahora; pendiente de revisión del equipo.
+
+### Impacto
+
+- **Back:**
+  - `producto.service.ts` (`remove`, `findBy`, `findByRapido`), `producto.persistence-adapters.ts`,
+    `producto.repository.ts` y `producto.repository-interface.ts`.
+  - `producto.controller.ts`, los dos DTOs de búsqueda, `get-producto.dto.ts` y
+    `producto.mapper.ts`.
+  - Tests: `producto.service.spec.ts`, `producto.persistence-adapters.spec.ts`,
+    `producto.http.spec.ts`, `producto.controller.spec.ts` y `producto.mapper.spec.ts`.
+- **Front:**
+  - `consultar-producto.tsx`, `header-producto.tsx`, `header-producto-lg.tsx`,
+    `producto-action.tsx`, `datos-card.tsx` e `interfaces-producto.tsx`.
+  - Nuevos `mostrar-eliminados-toggle.tsx` y `eliminado-badge.tsx`.
+  - `informacion-auditoria.tsx` y 4 archivos de test.
+- **Contrato:** `incluirEliminados` (opcional, `false` por defecto) en las dos búsquedas, y
+  `eliminado` en la respuesta del listado.
+
+### Verificación
+
+- **Back:** 252 tests de producto en verde.
+  - Mutación: con las dos líneas viejas del service repuestas, el test de regresión ("delega la
+    baja en el repositorio con el usuario, sin marcarla antes") falla.
+  - Los specs del adapter verifican que `deletedAt IS NULL` esté o no esté según
+    `incluirEliminados`. Antes, quitar esa condición no rompía ningún test.
+- **Front:** `vitest run` con 18 archivos y 62 tests en verde. `tsc` sin errores nuevos (125).
+- **En vivo:** ver la verificación de la rama de unificación.
+- **Sin verificar:** la UI en el navegador.

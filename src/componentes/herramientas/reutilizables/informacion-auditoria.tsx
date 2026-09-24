@@ -97,8 +97,9 @@ export default function InformacionAuditoria({ auditoria, onClose }: Informacion
                 </div>
               </div>
 
-              {/* Última modificación */}
-              {modificado && (
+              {/* Última modificación: en un registro eliminado, updatedAt es la fecha de la
+                  baja, así que se reemplaza por el bloque de eliminación. */}
+              {modificado && !auditoria.deletedAt && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">{getActionBadge("updated")}</div>
@@ -118,8 +119,9 @@ export default function InformacionAuditoria({ auditoria, onClose }: Informacion
                     <div className="flex items-center gap-2">{getActionBadge("deleted")}</div>
                     <span className="text-sm text-slate-600">{auditoria.deletedAt}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-700">
+                  <div className="flex items-center gap-2 text-red-700">
                     <User size={14} />
+                    <span className="text-sm">Eliminado por</span>
                     <span className="text-sm font-medium">{auditoria.usuarioDeleted || "No especificado"}</span>
                   </div>
                 </div>
