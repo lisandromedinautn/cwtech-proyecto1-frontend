@@ -6,6 +6,9 @@ import ProductoService from "../services/producto-service";
 import RegistrarActualizarProductoForm from "./registrar-actualizar-producto";
 import type { Producto } from "../../../../interfaces/gestion-producto/producto/interfaces-producto";
 
+// Envase que devuelve el selector mockeado; algunos tests lo cambian.
+const envaseMock = vi.hoisted(() => ({ actual: { id: 3, denominacion: "BOTELLA" } }));
+
 vi.mock("../services/producto-service", () => ({
   default: {
     nuevo: vi.fn(),
@@ -64,14 +67,18 @@ vi.mock("../../../herramientas/formateo-de-campos/porcentaje-input", () => ({
 }));
 
 vi.mock("../componentes/configuracion/lineas-selector", () => ({
-  default: ({ onLineaChange }: { onLineaChange: (linea: { id: number }) => void }) => (
-    <button type="button" onClick={() => onLineaChange({ id: 1 })}>Seleccionar línea</button>
+  default: ({ onLineaChange }: { onLineaChange: (linea: { id: number; denominacion: string }) => void }) => (
+    <button type="button" onClick={() => onLineaChange({ id: 1, denominacion: "GASEOSAS" })}>
+      Seleccionar línea
+    </button>
   ),
 }));
 
 vi.mock("../componentes/configuracion/marcas-selector", () => ({
-  default: ({ onChangeMarca }: { onChangeMarca: (marca: { id: number }) => void }) => (
-    <button type="button" onClick={() => onChangeMarca({ id: 2 })}>Seleccionar marca</button>
+  default: ({ onChangeMarca }: { onChangeMarca: (marca: { id: number; denominacion: string }) => void }) => (
+    <button type="button" onClick={() => onChangeMarca({ id: 2, denominacion: "COCA-COLA" })}>
+      Seleccionar marca
+    </button>
   ),
 }));
 
@@ -96,7 +103,7 @@ vi.mock("../../../herramientas/reutilizables/entidad-selector-base", () => ({
     onAgregar: () => void;
   }) => (
     <div>
-      <button type="button" onClick={() => onChange?.({ id: 3, denominacion: "BOTELLA" })}>
+      <button type="button" onClick={() => onChange?.(envaseMock.actual)}>
         Seleccionar {titulo}
       </button>
       <button type="button" onClick={onAgregar}>
@@ -111,8 +118,8 @@ vi.mock("../../envase-presentacion/services/envase-presentacion-service", () => 
   default: { obtenerSelect: vi.fn().mockResolvedValue({ data: [], total: 0 }) },
 }));
 
+// En el alta la denominación es automática por defecto (CR-005): no se escribe.
 const completarDatosBasicos = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.type(screen.getByLabelText("Denominación"), "Producto de prueba");
   await user.clear(screen.getByLabelText("Costo"));
   await user.type(screen.getByLabelText("Costo"), "100");
   await user.click(screen.getByRole("button", { name: "Seleccionar línea" }));
@@ -160,6 +167,7 @@ describe("RegistrarActualizarProductoForm", () => {
     cleanup();
     vi.clearAllMocks();
     vi.restoreAllMocks();
+    envaseMock.actual = { id: 3, denominacion: "BOTELLA" };
   });
 
   it("envía costo y margen, pero no el precio derivado", async () => {
@@ -170,7 +178,6 @@ describe("RegistrarActualizarProductoForm", () => {
 
     render(<RegistrarActualizarProductoForm onClose={onClose} onSuccess={onSuccess} />);
 
-    await user.type(screen.getByLabelText("Denominación"), "Producto de prueba");
     await user.clear(screen.getByLabelText("Costo"));
     await user.type(screen.getByLabelText("Costo"), "100");
     await user.clear(screen.getByLabelText("Margen particular"));
@@ -185,7 +192,7 @@ describe("RegistrarActualizarProductoForm", () => {
 
     expect(ProductoService.nuevo).toHaveBeenCalledWith(
       expect.objectContaining({
-        denominacion: "producto de prueba",
+        generarDenominacionAutomatica: true,
         costo: 100,
         margen: 20,
         lineaId: 1,
@@ -216,6 +223,7 @@ describe("RegistrarActualizarProductoForm", () => {
 
     await completarDatosBasicos(user);
     await completarPresentacion(user);
+    await user.click(screen.getByRole("checkbox", { name: "Denominación automática" }));
     await user.click(screen.getByRole("button", { name: "Registrar" }));
 
     expect(await screen.findByText("La denominación ya existe.")).toBeInTheDocument();
@@ -401,6 +409,178 @@ describe("RegistrarActualizarProductoForm", () => {
       expect(await screen.findByText("Seleccioná un envase.")).toBeInTheDocument();
       expect(screen.getByText("Seleccioná la unidad de medida.")).toBeInTheDocument();
       expect(ProductoService.actualizar).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("denominación automática (CR-005)", () => {
+    const campoDenominacion = () => screen.queryByRole("textbox", { name: "Denominación" });
+
+    it("en el alta muestra la denominación generada con Marca + Línea + Presentación y envía el flag", async () => {
+      const user = userEvent.setup();
+      vi.mocked(ProductoService.nuevo).mockResolvedValue({ mensaje: "Producto creado" });
+
+      render(<RegistrarActualizarProductoForm onClose={vi.fn()} onSuccess={vi.fn()} />);
+
+      expect(campoDenominacion()).not.toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: "Denominación automática" })).toBeChecked();
+      expect(screen.getByText("Se genera al elegir la marca, la línea y la presentación.")).toBeInTheDocument();
+
+      await completarDatosBasicos(user);
+      await completarPresentacion(user, "500", "ml");
+
+      expect(screen.getByText("COCA-COLA GASEOSAS BOTELLA 500 ml")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Registrar" }));
+
+      const payload = vi.mocked(ProductoService.nuevo).mock.calls[0][0];
+      expect(payload).toMatchObject({ generarDenominacionAutomatica: true, marcaId: 2, lineaId: 1 });
+      expect(payload).not.toHaveProperty("denominacion");
+    });
+
+    it("antes de registrar, la vista previa sigue los cambios de la presentación", async () => {
+      const user = userEvent.setup();
+
+      render(<RegistrarActualizarProductoForm onClose={vi.fn()} onSuccess={vi.fn()} />);
+
+      await completarDatosBasicos(user);
+      await completarPresentacion(user, "500", "ml");
+      envaseMock.actual = { id: 4, denominacion: "LATA" };
+      await user.click(screen.getByRole("button", { name: "Seleccionar Envase" }));
+
+      expect(screen.getByText("COCA-COLA GASEOSAS LATA 500 ml")).toBeInTheDocument();
+    });
+
+    it("permite editar la denominación manualmente, partiendo de la generada", async () => {
+      const user = userEvent.setup();
+      vi.mocked(ProductoService.nuevo).mockResolvedValue({ mensaje: "Producto creado" });
+
+      render(<RegistrarActualizarProductoForm onClose={vi.fn()} onSuccess={vi.fn()} />);
+
+      await completarDatosBasicos(user);
+      await completarPresentacion(user, "500", "ml");
+      await user.click(screen.getByRole("checkbox", { name: "Denominación automática" }));
+
+      expect(campoDenominacion()).toHaveValue("COCA-COLA GASEOSAS BOTELLA 500 ml");
+
+      await user.clear(campoDenominacion()!);
+      await user.type(campoDenominacion()!, "Coca Cola retornable");
+      await user.click(screen.getByRole("button", { name: "Registrar" }));
+
+      const payload = vi.mocked(ProductoService.nuevo).mock.calls[0][0];
+      expect(payload).toMatchObject({ denominacion: "coca cola retornable" });
+      expect(payload).not.toHaveProperty("generarDenominacionAutomatica");
+    });
+
+    it("en modo manual, cambiar la presentación no regenera la denominación", async () => {
+      const user = userEvent.setup();
+      vi.mocked(ProductoService.nuevo).mockResolvedValue({ mensaje: "Producto creado" });
+
+      render(<RegistrarActualizarProductoForm onClose={vi.fn()} onSuccess={vi.fn()} />);
+
+      await completarDatosBasicos(user);
+      await completarPresentacion(user, "500", "ml");
+      await user.click(screen.getByRole("checkbox", { name: "Denominación automática" }));
+      envaseMock.actual = { id: 4, denominacion: "LATA" };
+      await user.click(screen.getByRole("button", { name: "Seleccionar Envase" }));
+
+      expect(campoDenominacion()).toHaveValue("COCA-COLA GASEOSAS BOTELLA 500 ml");
+
+      await user.click(screen.getByRole("button", { name: "Registrar" }));
+
+      expect(ProductoService.nuevo).toHaveBeenCalledWith(
+        expect.objectContaining({
+          denominacion: "coca-cola gaseosas botella 500 ml",
+          presentacion: { envaseId: 4, cantidad: 500, unidad: "ml" },
+        }),
+      );
+    });
+
+    it("volver a marcar la automática descarta el texto manual y vuelve a enviar el flag", async () => {
+      const user = userEvent.setup();
+      vi.mocked(ProductoService.nuevo).mockResolvedValue({ mensaje: "Producto creado" });
+
+      render(<RegistrarActualizarProductoForm onClose={vi.fn()} onSuccess={vi.fn()} />);
+
+      await completarDatosBasicos(user);
+      await completarPresentacion(user, "500", "ml");
+      await user.click(screen.getByRole("checkbox", { name: "Denominación automática" }));
+      await user.type(campoDenominacion()!, " especial");
+      await user.click(screen.getByRole("checkbox", { name: "Denominación automática" }));
+
+      expect(campoDenominacion()).not.toBeInTheDocument();
+      expect(screen.getByText("COCA-COLA GASEOSAS BOTELLA 500 ml")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Registrar" }));
+
+      const payload = vi.mocked(ProductoService.nuevo).mock.calls[0][0];
+      expect(payload).toMatchObject({ generarDenominacionAutomatica: true });
+      expect(payload).not.toHaveProperty("denominacion");
+    });
+
+    it("muestra el mensaje del backend si la denominación generada ya existe", async () => {
+      const user = userEvent.setup();
+      vi.mocked(ProductoService.nuevo).mockRejectedValue({
+        response: {
+          status: 409,
+          data: {
+            statusCode: 409,
+            code: "CONFLICTO",
+            message: 'La denominación "COCA-COLA GASEOSAS BOTELLA 500 ml" ya está en uso',
+          },
+        },
+      });
+
+      render(<RegistrarActualizarProductoForm onClose={vi.fn()} onSuccess={vi.fn()} />);
+
+      await completarDatosBasicos(user);
+      await completarPresentacion(user, "500", "ml");
+      await user.click(screen.getByRole("button", { name: "Registrar" }));
+
+      const mensaje =
+        'La denominación "COCA-COLA GASEOSAS BOTELLA 500 ml" ya está en uso. Podés editar la denominación manualmente.';
+      expect(await screen.findByText(mensaje)).toBeInTheDocument();
+
+      await user.click(screen.getByRole("checkbox", { name: "Denominación automática" }));
+
+      expect(screen.queryByText(mensaje)).not.toBeInTheDocument();
+    });
+
+    it("en la edición no regenera la denominación si cambia la presentación", async () => {
+      const user = userEvent.setup();
+      vi.mocked(ProductoService.actualizar).mockResolvedValue({ mensaje: "Producto editado" });
+
+      render(
+        <RegistrarActualizarProductoForm
+          producto={{
+            ...productoExistente({
+              envase: { id: 3, denominacion: "BOTELLA" },
+              contenido: { cantidad: 500, unidad: "ml" },
+              texto: "BOTELLA 500 ml",
+            }),
+            denominacion: "COCA-COLA GASEOSAS BOTELLA 500 ml",
+            marca: { id: 2, denominacion: "COCA-COLA" },
+            linea: { id: 1, denominacion: "GASEOSAS" },
+          } as unknown as Producto}
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByRole("checkbox", { name: "Denominación automática" })).not.toBeInTheDocument();
+
+      envaseMock.actual = { id: 4, denominacion: "LATA" };
+      await user.click(screen.getByRole("button", { name: "Seleccionar Envase" }));
+
+      expect(campoDenominacion()).toHaveValue("COCA-COLA GASEOSAS BOTELLA 500 ml");
+
+      await user.click(screen.getByRole("button", { name: "Actualizar" }));
+
+      const payload = vi.mocked(ProductoService.actualizar).mock.calls[0][1];
+      expect(payload).toMatchObject({
+        denominacion: "coca-cola gaseosas botella 500 ml",
+        presentacion: { envaseId: 4, cantidad: 500, unidad: "ml" },
+      });
+      expect(payload).not.toHaveProperty("generarDenominacionAutomatica");
     });
   });
 });

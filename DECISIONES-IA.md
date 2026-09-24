@@ -921,3 +921,135 @@ este archivo, y registrar nuevas deudas.
   (cards, `lg:hidden`) no se comporta igual que la de escritorio (tabla). Ejemplo ya comprobado: el
   botón "Movimientos" de proveedor existe solo en mobile y rompe la pantalla. Falta relevar el resto
   de las diferencias.
+
+## [2026-09-24] PA-032 — Denominación automática en el alta del producto
+
+- **Tarjeta / CR:** PA-032 (CR-005 / US-05). Consume el contrato de PA-031 del backend (merge `bf75fff`).
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: adaptar el frontend a la denominación automática de CR-005, respetando lo que espera
+el backend (commit `bf75fff`). Criterios de aceptación: en el alta, por defecto, la UI muestra la
+denominación generada con Marca + Línea + Presentación; el usuario puede editarla a mano; la UI no
+duplica la regla como fuente de verdad y consume la semántica del backend; una vez creado el
+producto, un cambio de marca, línea o presentación no la regenera; tests de la generación visible,
+la edición manual y la ausencia de regeneración. Ejemplo: Coca-Cola + Gaseosas + BOTELLA 500 ml →
+"Coca-Cola Gaseosas BOTELLA 500 ml"; si después la presentación pasa a LATA 500 ml, la
+denominación se conserva.
+
+### Respuesta / propuesta de la IA
+
+Relevó el backend de PA-031: `CreateProductoDto` acepta `generarDenominacionAutomatica?: boolean`;
+con `true`, el backend ignora la `denominacion` recibida y la arma con
+`Producto.generarDenominacionAutomatica(marca, línea, presentacion.texto(envase))`, ya normalizada
+("COCA-COLA GASEOSAS BOTELLA 500 ml", "1 L", "1 unidad"). Sin el flag, la denominación manual
+sigue siendo obligatoria, y el `PUT` nunca la regenera. Señaló que el front no tiene el texto
+normalizado antes de guardar (el alta responde solo un mensaje) y planteó tres dudas: cómo mostrar
+el nombre antes de guardar, qué pasa al desbloquear el campo y cómo mostrar el 409 por
+denominación repetida.
+
+### Decisión tomada
+
+- **La regla sigue en el backend.** En el alta, por defecto, el formulario manda
+  `generarDenominacionAutomatica: true` **sin** `denominacion`, y el backend arma el nombre final.
+- **Vista previa, no fuente de verdad.** El formulario muestra una vista previa con los datos
+  cargados: marca, línea, envase, valor y unidad (`domain/denominacion-producto.ts`,
+  `vistaPreviaDenominacion`). **No normaliza** el contenido, así que difiere del nombre guardado
+  cuando el backend convierte ("1000 ml" → "1 L", "1 unidades" → "1 unidad"); la leyenda del
+  campo lo aclara. Es el mismo criterio que el "Precio de venta estimado".
+- **Modo manual.** Debajo del campo hay un check "Denominación automática", marcado por defecto
+  en el alta. Al desmarcarlo, el campo se habilita con la vista previa ya escrita; desde ahí, los
+  cambios de marca, línea o presentación no tocan el texto, y el payload lleva `denominacion` sin
+  el flag. Al volver a marcarlo, se descarta lo escrito y se reactiva la generación.
+- **Edición.** El campo es el de siempre, editable a mano, y el flag nunca viaja: un cambio de
+  marca, línea o presentación no regenera la denominación.
+- **409.** Se muestra el mensaje del backend al pie del formulario ("La denominación "X" ya está
+  en uso."), en vez del genérico de `CONFLICTO`. Si estaba en automática, se agrega "Podés editar
+  la denominación manualmente.". `utils/errores` no se tocó.
+- **Esquema:** con la automática, `denominacion` no se valida en el front (la valida el backend).
+- **Servicio:** `ProductoService` se tipa con `ProductoPayload` (lo que arma
+  `armarPayloadProducto`) en lugar de `FormValues`, porque con la automática la denominación no
+  viaja.
+
+### Qué se descartó y por qué
+
+- **Copiar en React la normalización del contenido** para que la vista previa sea exacta: repite
+  la regla N2 del dominio (ya se descartó en PA-025) y va contra el criterio "la UI no duplica la
+  regla".
+- **Un endpoint de previsualización en el backend:** daría la vista previa exacta, pero toca el
+  backend (otra tarjeta) y hace un request por cada cambio de marca, línea o presentación. Queda
+  como deuda (abajo).
+- **Componer el nombre en el front y mandarlo en `denominacion`:** el front sería la fuente de
+  verdad, justo lo que el criterio de aceptación prohíbe.
+- **Desbloquear sin poder volver a la automática, o con el campo vacío:** obliga a reescribir el
+  nombre, o a cerrar el formulario, para recuperar la generación.
+- **Mostrar el 409 debajo del campo Denominación:** para distinguirlo de otro 409 (por ejemplo, un
+  código repetido) habría que buscar la palabra "denominación" en el mensaje, que es frágil.
+
+### Deuda técnica asumida
+
+- **Vista previa aproximada.** Mientras el backend no exponga la previsualización, la vista previa
+  puede no coincidir con el nombre guardado en los casos que normaliza. Propuesta: un endpoint (por
+  ejemplo `GET /api/producto/denominacion-automatica?marcaId&lineaId&envaseId&cantidad&unidad`)
+  que use `Producto.generarDenominacionAutomatica`, y que el front lo consulte en lugar de armar el
+  texto.
+- **Largo máximo de la generada:** la valida solo el backend, con el límite de 200 caracteres del
+  servicio (deuda previa: el DTO acepta 255). Si se pasa, el mensaje del backend aparece al pie.
+
+### Modificaciones sobre lo generado
+
+- La primera versión dejaba `ProductoService` tipado con `FormValues`, y `tsc` sumó 2 errores
+  (127 contra 125). Se corrigió tipando el servicio con `ProductoPayload`.
+- En la prueba manual, el mensaje del 409 seguía a la vista después de pasar a "Editar
+  manualmente" o de volver a la automática. Ahora cambiar de modo limpia ese error, y el test del
+  409 lo comprueba.
+- A pedido del usuario, después de la prueba manual, los botones "Editar manualmente" / "Volver a
+  automática" (grandes, estorbaban) se reemplazaron por un check "Denominación automática", con el
+  mismo estilo que el de Stock Crítico. La prueba manual de más abajo se hizo con los botones; el
+  check quedó cubierto por los tests.
+- También a pedido del usuario, el subtítulo de la edición de producto pasó de "Sólo puede
+  visualizarse, no modificarse." (obsoleto: el formulario sí permite modificar) a "Ingrese los
+  datos". El formulario de Marca conserva el texto viejo.
+
+### Impacto
+
+- Nuevos: `producto/domain/denominacion-producto.ts` y su test.
+- Modificados: `producto/utils/registrar-actualizar-producto.tsx` (vista previa, botones de modo,
+  flag por defecto en el alta, 409 y registro de la marca y la línea elegidas),
+  `producto/interfaces/interfaces-validaciones-producto.tsx` (`generarDenominacionAutomatica`,
+  esquema condicional, `armarPayloadProducto` y `ProductoPayload`),
+  `producto/services/producto-service.tsx` (tipo del payload) y
+  `producto/utils/registrar-actualizar-producto.test.tsx`.
+- **Contrato:** sin cambios en el backend; se usa el flag de PA-031.
+
+### Verificación
+
+- `vitest run`: 21 archivos y 87 tests en verde (antes 20 y 70). Se ajustaron 3 tests del
+  formulario que escribían la denominación a mano: 2 ahora usan la automática y el de errores 400
+  pasa a manual. Tests nuevos: 7 en el formulario (vista previa y flag en el alta, la vista previa
+  sigue a la presentación, edición manual precargada, sin regeneración en modo manual, volver a
+  automática, 409 con el mensaje del backend y sin regeneración en la edición) y 10 en
+  `denominacion-producto.test.ts` (vista previa y payload).
+- `tsc --noEmit -p tsconfig.app.json`: 125 errores antes y después, todos previos.
+- ESLint sobre los archivos tocados: sin errores nuevos. Quedan las 4 advertencias
+  `exhaustive-deps` del formulario y el `no-useless-catch` de `producto-service.tsx`, todos previos.
+- `vite build`: correcto.
+- Prueba manual en el navegador contra el backend local de `develop` (con PA-031). Para que el
+  listado anduviera hubo que correr, con permiso del usuario, la migración pendiente
+  `CreateSuperLinea` en la base de Docker.
+  - Alta automática de CAROYENSE + ACEITES + BOTELLA 1000 ml: la vista previa mostró "CAROYENSE
+    ACEITES BOTELLA 1000 ml" y el backend guardó "CAROYENSE ACEITES BOTELLA 1 L" (la diferencia
+    esperada por la normalización).
+  - Repetir la combinación con 1 L dio 409, con el mensaje del backend y la sugerencia.
+  - "Editar manualmente" precargó el texto, y cambiar el envase a LATA no lo tocó. "Volver a
+    automática" mostró "CAROYENSE ACEITES LATA 1 L" y el alta se guardó con ese nombre: botella y
+    lata no chocan.
+  - En la edición, cambiar el envase a FRASCO conservó "CAROYENSE ACEITES BOTELLA 1 L".
+- Quedaron en la base local 2 productos de prueba: "CAROYENSE ACEITES BOTELLA 1 L" (ahora con
+  FRASCO 1 L) y "CAROYENSE ACEITES LATA 1 L".
+- **Sin verificar:** una denominación generada de más de 200 caracteres (la rechaza el backend y
+  el mensaje debería aparecer al pie, sin prueba propia) y la vista mobile del formulario en un
+  celular real; la prueba se hizo en el panel angosto del navegador.
