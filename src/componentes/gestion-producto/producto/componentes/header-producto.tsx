@@ -5,13 +5,16 @@ import { Input } from "../../../ui/Input";
 import { EstadisticasSimples } from "../../../herramientas/reutilizables/estadisticas-simples";
 import { ImpresionForm } from "../../../herramientas/reutilizables/impresion-form";
 import { puedeAgregarProducto } from "../domain/permisos-producto";
+import { MostrarEliminadosToggle } from "./mostrar-eliminados-toggle";
 
 interface Props {
   roles:number[];
   codigo: string;
   exacto: boolean;
+  mostrarEliminados: boolean;
   onChangeCodigo: (value: string) => void;
   onChangeExacto: (value: boolean) => void;
+  onChangeMostrarEliminados: (value: boolean) => void;
   onBuscarRapido: () => void;
   onNuevo: () => void;
   total: number;
@@ -25,8 +28,10 @@ export function ProductosHeader({
   roles,
   codigo,
   exacto,
+  mostrarEliminados,
   onChangeCodigo,
   onChangeExacto,
+  onChangeMostrarEliminados,
   onBuscarRapido,
   onNuevo,
   total,
@@ -67,6 +72,7 @@ export function ProductosHeader({
         </div>
 
         <EstadisticasSimples filtrados={total} mostrados={mostrados} />
+        <MostrarEliminadosToggle checked={mostrarEliminados} onChange={onChangeMostrarEliminados} />
       </div>
 
       <div className="flex gap-2">

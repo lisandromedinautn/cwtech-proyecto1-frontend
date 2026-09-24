@@ -97,6 +97,7 @@ export interface ConsultarProducto {
   precioClienteConIva: number;
   precioOfertaConIva: number;
   presentacion?: PresentacionProducto | null;
+  eliminado?: boolean;
 }
 
 

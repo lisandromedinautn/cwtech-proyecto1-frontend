@@ -35,6 +35,7 @@ import { puedeHacerAcciones } from "../domain/permisos-producto";
 import ProveedorService from "../../../gestion-organizacion/proveedor/services/proveedor-service";
 import { getApiErrorCategory, getApiErrorMessage, normalizeApiError } from "../../../../utils/errores";
 import { textoPresentacion } from "../domain/presentacion-producto";
+import { EliminadoBadge } from "../componentes/eliminado-badge";
 import { useNotificaciones } from "../../../../context/notificaciones-context";
 
 
@@ -61,6 +62,7 @@ export default function ConsultarProductos() {
   const { configuracion } = useConfiguracionSistema();
   const [codigo, setCodigo] = useState<string>("");
   const [exacto, setExacto] = useState<boolean>(true);
+  const [mostrarEliminados, setMostrarEliminados] = useState<boolean>(false);
   const [auditoria, setAuditoria] = useState<Auditoria>({} as Auditoria);
   const isMounted = useRef(false);
   const inicializacionCompleta = useRef(false);
@@ -82,6 +84,7 @@ export default function ConsultarProductos() {
     limpiarFiltros,
     buscar,
     setBuscar,
+    busquedaRapida,
     setBusquedaRapida,
   } = useFiltrosContext();
 
@@ -127,6 +130,15 @@ export default function ConsultarProductos() {
     }, 400);
     return () => clearTimeout(timer);
   }, [codigo, exacto]);
+
+  useEffect(() => {
+    if (!inicializacionCompleta.current) return;
+    if (busquedaRapida) {
+      handleBuscarProductosRapido(true);
+    } else {
+      handleBuscarProductos(true);
+    }
+  }, [mostrarEliminados]);
 
   useEffect(() => {
     if (buscar.cont > 0 && buscar.componente === "consultar-producto") {
@@ -315,7 +327,11 @@ export default function ConsultarProductos() {
     let response: ResponsePost;
     try {
       response = await ProductoService.eliminar(id, usuarioId);
-      setProductos(productos.filter((producto) => producto.id !== id));
+      setProductos(
+        mostrarEliminados
+          ? productos.map((producto) => (producto.id === id ? { ...producto, eliminado: true } : producto))
+          : productos.filter((producto) => producto.id !== id),
+      );
       addAlert({
         type: TipoAlerta.SUCCESS,
         title: TituloAlerta.SUCCESS,
@@ -439,6 +455,7 @@ export default function ConsultarProductos() {
       conStock: valoresFiltros.conStock,
       codReferenciaExacto: valoresFiltros.codReferenciaExacto,
       codProveedorExacto: valoresFiltros.codProveedorExacto,
+      incluirEliminados: mostrarEliminados,
       skip: skip,
       take: take,
     };
@@ -478,6 +495,7 @@ export default function ConsultarProductos() {
       codigoProveedor: valoresFiltros.codigoProveedor,
       codigoReferencia: valoresFiltros.codigoReferencia,
       codProveedorExacto: valoresFiltros.codProveedorExacto,
+      incluirEliminados: mostrarEliminados,
       codReferenciaExacto: valoresFiltros.codReferenciaExacto,
       lineaId: valoresFiltros.lineaId,
       marcaId: valoresFiltros.marcaId,
@@ -520,6 +538,7 @@ export default function ConsultarProductos() {
     const filtrosConPaginacion = {
       codigo: codigo,
       exacto: exacto,
+      incluirEliminados: mostrarEliminados,
       skip: skip,
       take: take,
     };
@@ -569,6 +588,7 @@ export default function ConsultarProductos() {
           >
             <Star size={16} className={row.esAlternativo ? "text-red-500 shrink-0" : "text-yellow-500 shrink-0"} />
             <span>{value}</span>
+            {row.eliminado && <EliminadoBadge />}
           </div>
           {row.observacion && <div className="text-sm text-gray-500 truncate max-w-[700px]">{row.observacion}</div>}
         </div>
@@ -620,8 +640,10 @@ export default function ConsultarProductos() {
                   roles={getRoles()}
                   codigo={codigo}
                   exacto={exacto}
+                  mostrarEliminados={mostrarEliminados}
                   onChangeCodigo={setCodigo}
                   onChangeExacto={setExacto}
+                  onChangeMostrarEliminados={setMostrarEliminados}
                   onBuscarRapido={() => handleBuscarProductosRapido(true)}
                   onNuevo={openModal}
                   total={entidadesTotales}
@@ -636,9 +658,11 @@ export default function ConsultarProductos() {
                 <ProductosHeaderLg
                   codigo={codigo}
                   exacto={exacto}
+                  mostrarEliminados={mostrarEliminados}
                   roles={getRoles()}
                   onChangeCodigo={setCodigo}
                   onChangeExacto={setExacto}
+                  onChangeMostrarEliminados={setMostrarEliminados}
                   onBuscarRapido={() => handleBuscarProductosRapido(true)}
                   onNuevo={openModal}
                   total={entidadesTotales}
