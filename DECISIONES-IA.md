@@ -595,3 +595,77 @@ Ninguna por ahora; pendiente de revisión del equipo.
 - `vitest run`: 15 archivos y 54 tests en verde. Antes del fix del import, 4 fallidos.
 - `tsc --noEmit -p tsconfig.app.json`: 126 errores. Antes del fix eran 129; el import resolvió 3.
 - **Sin verificar:** la navegación en el navegador.
+
+## [2026-09-24] PA-053 — Detalles del producto: responsable en el historial de precios y auditoría que muestra solo lo que existe
+
+- **Tarjeta / CR:** PA-053. Revierte parcialmente lo descartado en PA-019 (mostrar el usuario del cambio de precio)
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+- **Repos:** back y front; la misma entrada está en el `DECISIONES-IA.md` de cada uno.
+
+### Prompt
+
+Síntesis: el botón de información (la "I") muestra el último cambio pero no qué se cambió, y el
+historial de precios (el reloj) no muestra quién hizo cada cambio. Analizar qué guarda la
+auditoría y si se puede rastrear qué campo cambió. El equipo decidió que PA-053 **se limita a
+mostrar mejor lo que ya existe** y a que se vea como corresponde, sin agregar un registro de
+cambios por campo.
+
+### Respuesta / propuesta de la IA
+
+- La auditoría de producto son columnas de la misma fila: `createdAt`, `updatedAt`, `deletedAt` y
+  los usuarios de creación, última modificación y baja. Cada edición pisa a la anterior, así que
+  no se puede saber qué campo cambió. El módulo `gestion-sistema/auditoria` es un esqueleto del
+  CLI de Nest sin implementar. Los únicos rastros por campo son `historial_precio` y
+  `movimiento_stock`.
+- `historial_precio.usuario_id` ya se guardaba (en la base local, el cambio del producto 1 es de
+  Jenifer Lopez), pero `findHistorialPrecios` no cargaba la relación y devolvía solo el id.
+- En el modal de auditoría: `updatedAt` se completa ya al crear, así que el bloque "Actualizado"
+  aparecía siempre, con "No especificado"; el ID para Root dependía de un `rolId` que el token no
+  trae, y por eso hacía una request al backend en cada apertura; y `mapProductoToDto` respondía 500
+  si el producto no tenía usuario creador.
+
+### Decisión tomada
+
+- Back: `findHistorialPrecios` carga `usuario` y devuelve `usuarioDenominacion` (null si no hay
+  usuario), sin quitar `usuarioId`. `mapProductoToDto` tolera un producto sin creador.
+- Front: columna "Responsable" en el historial de precios ("—" si no hay). En el modal de
+  auditoría, el bloque pasa a llamarse "Última modificación" y solo aparece si hubo usuario de
+  modificación o una fecha distinta a la de creación. El ID para Root se decide con
+  `getRoles().includes(Rol.ROOT)`.
+
+### Qué se descartó y por qué
+
+- **Registrar los cambios por campo (tabla de bitácora con campo, valor anterior y nuevo):** lo
+  descartó el equipo para esta tarjeta. Cambia el modelo y el esquema, y PA-053 es de
+  visualización.
+- **Mantener lo descartado en PA-019 (mostrar solo el id):** ese descarte se basaba en que el
+  backend no devolvía el nombre. Ahora lo devuelve.
+- **Resolver el nombre del usuario en el front con otra request:** una consulta extra por cada fila,
+  cuando el backend ya tiene la relación.
+- **Ocultar "Última modificación" comparando solo `usuarioUpdated`:** los registros viejos pueden
+  tener fecha de modificación sin usuario. Por eso también se compara la fecha.
+
+### Modificaciones sobre lo generado
+
+Ninguna por ahora; pendiente de revisión del equipo.
+
+### Impacto
+
+- Back: `producto.service.ts` (`findHistorialPrecios`), `dto/historial-precio.dto.ts`,
+  `gestion-sistema/auditoria/mappers/auditoria.mapper.ts`, `producto.service.spec.ts` y el nuevo
+  `auditoria.mapper.spec.ts`.
+- Front: `interfaces-historial-precios.tsx`, `modales/historial-precios-modal.tsx` y su test,
+  `herramientas/reutilizables/informacion-auditoria.tsx` (modal genérico, lo usan también
+  clientes, proveedores, etc.) y el nuevo `informacion-auditoria.test.tsx`.
+- Contrato: `GET /producto/:id/historial-precios` suma `usuarioDenominacion`, y no se quita nada.
+
+### Verificación
+
+- Back: tests del service y del mapper en verde (39 en esos specs). El test del historial
+  verifica que se pida la relación `usuario` y que la respuesta traiga el nombre, o `null`.
+- Front: `vitest run` con 16 archivos y 57 tests en verde. `tsc` sin errores nuevos (125, igual que
+  testing). El test "sin modificaciones" falla con el código anterior, porque el bloque aparecía
+  siempre.
+- **Sin verificar:** el modal en el navegador.
