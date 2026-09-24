@@ -538,3 +538,60 @@ no matchea por denominación, y el filtro lateral con varios criterios devuelve 
     código se desmonta y pierde el foco en cada búsqueda con debounce.
 - El buscador de productos reutilizable (`busqueda-producto.tsx`) llama a endpoints
   `search-productos-by-rapido` de otros módulos que el back actual no expone.
+
+## [2026-09-24] Integración — `Pa-020-Testing` al día con `develop` y `main`; import perdido en `PrivateRoute`
+
+- **Tarjeta / CR:** ninguna propia; preparación de PA-053 y PA-055. Integra PA-051, PA-025 y PA-049
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: traer a la rama de testing los últimos cambios de `develop` (PA-051 de Martina Pineda),
+teniendo en cuenta que `develop` no contenía `main`; analizar el impacto, mergear y crear las ramas
+de PA-053 y PA-055 desde `develop`, al día con `develop` y con testing.
+
+### Respuesta / propuesta de la IA
+
+- `main` contra `develop`: los 2 commits de `main` que faltaban son merges de release sin cambios
+  de contenido.
+- Único conflicto de texto: `DECISIONES-IA.md`. `consultar-producto.tsx` se mergeó solo y convive
+  con el manejo de errores de PA-020 (las alertas de stock crítico de PA-051 se disparan desde un
+  effect sobre `productos`).
+- Después del merge fallaban los 4 tests de `PrivateRoute.test.tsx` con
+  `ReferenceError: useConfirmation is not defined`. El archivo es idéntico en `origin/develop`: el
+  merge `3b8dd1b` ("Merge branch 'develop' into PA-051-Implementar-bajoMinimo") conservó el uso de
+  `useConfirmation()` pero perdió su import. En `develop`, toda ruta privada rompe en ejecución.
+
+### Decisión tomada
+
+- Merges con `--no-ff`: `develop` → `Pa-020-Testing` y `main` → `Pa-020-Testing`. En
+  `DECISIONES-IA.md` se tomó el archivo de `develop` y la entrada de PA-020 quedó al final.
+- Se restauró en `src/utils/PrivateRoute.tsx` el import de `TipoAlertaConfirmacion`,
+  `TituloAlertaConfirmacion` y `useConfirmation` tal como estaba en `0427ce2`.
+- Ramas `PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto` y
+  `PA-055-Comprobar-soft-delete-de-la-lista-de-productos` creadas desde `origin/develop`, con la
+  rama de testing mergeada.
+
+### Qué se descartó y por qué
+
+- **Dejar el fix para un PR aparte sobre `develop`:** la rama de testing y las de PA quedaban con
+  todas las rutas privadas rotas. Se arregló acá, y conviene llevarlo a `develop` cuanto antes.
+- **Rebase sobre `develop`:** reescribe historia ya pusheada.
+
+### Modificaciones sobre lo generado
+
+Ninguna por ahora; pendiente de revisión del equipo.
+
+### Impacto
+
+- `src/utils/PrivateRoute.tsx` (import).
+- Las ramas de PA-053 y PA-055 incluyen todo lo de la rama de testing: sus PRs contra `develop` lo
+  van a arrastrar si no se mergeó antes.
+
+### Verificación
+
+- `vitest run`: 15 archivos y 54 tests en verde. Antes del fix del import, 4 fallidos.
+- `tsc --noEmit -p tsconfig.app.json`: 126 errores. Antes del fix eran 129; el import resolvió 3.
+- **Sin verificar:** la navegación en el navegador.
