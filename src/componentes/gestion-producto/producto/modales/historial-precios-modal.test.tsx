@@ -20,7 +20,17 @@ const cambio = (
   precioNuevo: number,
   motivo: string,
   fecha: string,
-) => ({ id, productoId: producto.id, precioAnterior, precioNuevo, motivo, fecha, usuarioId: 1 });
+  usuarioDenominacion: string | null = "Jenifer Lopez",
+) => ({
+  id,
+  productoId: producto.id,
+  precioAnterior,
+  precioNuevo,
+  motivo,
+  fecha,
+  usuarioId: usuarioDenominacion ? 4 : null,
+  usuarioDenominacion,
+});
 
 function respuestaPendiente() {
   let resolver!: (respuesta: HistorialPreciosPaginado) => void;
@@ -36,7 +46,7 @@ describe("HistorialPreciosModal", () => {
     vi.clearAllMocks();
   });
 
-  it("muestra los cambios confirmados por el backend con precio anterior, nuevo, fecha y motivo", async () => {
+  it("muestra los cambios confirmados por el backend con precio anterior, nuevo, fecha, motivo y responsable", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const pendiente = respuestaPendiente();
@@ -52,7 +62,7 @@ describe("HistorialPreciosModal", () => {
       pendiente.resolver({
         data: [
           cambio(2, 1200, 1500.5, "Aumento de costo del proveedor", "2026-09-17T15:30:00.000Z"),
-          cambio(1, 1000, 1200, "Actualización de lista", "2026-09-10T12:00:00.000Z"),
+          cambio(1, 1000, 1200, "Actualización de lista", "2026-09-10T12:00:00.000Z", null),
         ],
         total: 2,
       });
@@ -64,6 +74,7 @@ describe("HistorialPreciosModal", () => {
       "Precio anterior",
       "Precio nuevo",
       "Motivo",
+      "Responsable",
     ]);
     const [, masReciente, anterior] = within(tabla).getAllByRole("row");
     expect(within(masReciente).getAllByRole("cell").map((td) => td.textContent)).toEqual([
@@ -71,12 +82,14 @@ describe("HistorialPreciosModal", () => {
       "$ 1.200,00",
       "$ 1.500,50",
       "Aumento de costo del proveedor",
+      "Jenifer Lopez",
     ]);
     expect(within(anterior).getAllByRole("cell").map((td) => td.textContent)).toEqual([
       formatFechaHora("2026-09-10T12:00:00.000Z"),
       "$ 1.000,00",
       "$ 1.200,00",
       "Actualización de lista",
+      "—",
     ]);
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
 
