@@ -776,3 +776,48 @@ Ninguna por ahora; pendiente de revisión del equipo.
 - **Front:** `vitest run` con 18 archivos y 62 tests en verde. `tsc` sin errores nuevos (125).
 - **En vivo:** ver la verificación de la rama de unificación.
 - **Sin verificar:** la UI en el navegador.
+
+## [2026-09-24] Unificación — `unificacion-testing-PA-053-PA-055`, rama única para llevar a `develop`
+
+- **Tarjeta / CR:** PA-053 y PA-055, más lo acumulado en testing (PA-020, arreglo de tests y la integración de PA-029)
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: en las ramas de testing commitear solo lo referido a testing y poner cada funcionalidad
+en su PA; crear una rama que unifique todo para después mergearla a `develop`, esperando permiso
+del equipo para ese merge.
+
+### Decisión tomada
+
+- La rama `unificacion-testing-PA-053-PA-055` sale de `origin/develop` y mergea, con `--no-ff` y en
+  este orden, testing, PA-053 y PA-055.
+- Conflictos resueltos:
+  - `DECISIONES-IA.md`: quedan las entradas de las dos PA, en orden.
+  - En el front, `informacion-auditoria.tsx`: la última modificación se muestra si la hubo
+    (PA-053) y si el registro no está eliminado (PA-055).
+- **El merge a `develop` queda pendiente de permiso.** En el back, `develop` está protegida y el
+  merge tiene que entrar por PR.
+
+### Qué se descartó y por qué
+
+- **Squash de todo en un único commit:** se pierde la trazabilidad por PA que pide la consigna.
+- **Mergear las PA directamente a `develop`:** el equipo pidió una rama única y revisar antes.
+
+### Verificación
+
+- Back: `tsc` sin errores; `jest` con 56 suites y 356 tests en verde.
+- Front: `vitest run` con 19 archivos y 65 tests en verde; `tsc` con 125 errores, ninguno nuevo.
+  Los únicos TS2304 son los 8 viejos registrados en la integración.
+- En vivo, back de esta rama levantado en el puerto 3001 contra la base local:
+  - historial del producto 1: `usuarioDenominacion` "Jenifer Lopez";
+  - `DELETE /producto/7?usuarioId=4`: 200, `deletedAt` cargado y `usuario_deleted_id = 4`;
+  - un segundo DELETE: 404;
+  - `search-by`: 6 resultados sin `incluirEliminados` y 7 con `incluirEliminados=true`, con
+    `MAR-001` marcado `eliminado`. Lo mismo en `search-by-rapido`;
+  - `GET /producto/7/audit`: `usuarioDeleted` "Jenifer Lopez".
+
+  Después de la prueba se restauró el producto 7 en la base local.
+- **Sin verificar:** la UI en el navegador.
