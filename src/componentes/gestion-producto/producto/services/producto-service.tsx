@@ -5,6 +5,7 @@ import { createCrudService } from "../../../../utils/crudFactory";
 import { FormValues } from "../interfaces/interfaces-validaciones-producto";
 import ApiService from "../../../../utils/apiService";
 import type { HistorialPreciosPaginado } from "../../../../interfaces/gestion-producto/historial-precios/interfaces-historial-precios";
+import type { ConsultarProducto } from "../../../../interfaces/gestion-producto/producto/interfaces-producto";
 
 
 const apiUrl = axiosConfig.apiUrl;
@@ -17,6 +18,32 @@ export interface AjusteStockManualPayload {
   usuarioId: number;
 }
 
+export interface ProductoSearchFilters {
+  denominacion?: string;
+  linea?: string;
+  superlinea?: string;
+  incluirEliminados?: boolean;
+  skip: number;
+  take: number;
+}
+
+export interface ProductoSearchResponse {
+  data: ConsultarProducto[];
+  total: number;
+}
+
+export const buildProductoSearchParams = ({ denominacion, linea, superlinea, incluirEliminados, skip, take }: ProductoSearchFilters) => {
+  const params: Record<string, string | number> = { skip, take };
+
+  for (const [key, value] of Object.entries({ denominacion, linea, superlinea })) {
+    const trimmedValue = value?.trim();
+    if (trimmedValue) params[key] = trimmedValue;
+  }
+  if (incluirEliminados) params.incluirEliminados = "true";
+
+  return params;
+};
+
 const ProductoService = {
   ...baseService,
 
@@ -25,6 +52,10 @@ const ProductoService = {
 
   obtenerHistorialPrecios: (id: number, skip: number, take: number): Promise<HistorialPreciosPaginado> =>
     ApiService.get(`/producto/${id}/historial-precios`, { skip, take }),
+
+  buscarPorFiltros: (filtros: ProductoSearchFilters): Promise<ProductoSearchResponse> =>
+    // Axios serializa y codifica los valores del objeto params en la query string.
+    ApiService.get("/producto/search-by", buildProductoSearchParams(filtros)),
 
   
   obtenerMobile: async (filtros: any) => {

@@ -10,6 +10,7 @@ interface ValoresFiltros {
   codReferenciaExacto?: boolean;
   lineaId?: number;
   denominacionLinea?: string;
+  denominacionSuperlinea?: string;
   sublineaId?: number;
   denominacionSublinea?: string;
   marcaId?: number;
@@ -70,6 +71,8 @@ interface FiltrosContextType {
   setBuscarMarcas: (valor: number) => void;
   buscarLineas: number;
   setBuscarLineas: (valor: number) => void;
+  buscarSuperlineas: number;
+  setBuscarSuperlineas: (valor: number) => void;
 
 }
 
@@ -87,6 +90,7 @@ export const FiltrosProvider = ({ children }: { children: ReactNode }) => {
     codigoProveedor: false,
     codigoReferencia: false,
     linea: false,
+    superlinea: false,
     sublinea: false,
     marca: false,
     conStock: false,
@@ -125,6 +129,7 @@ export const FiltrosProvider = ({ children }: { children: ReactNode }) => {
   const [busquedaRapida, setBusquedaRapida] = useState<boolean>(false);
   const [buscarMarcas, setBuscarMarcas] = useState<number>(0);
   const [buscarLineas, setBuscarLineas] = useState<number>(0);
+  const [buscarSuperlineas, setBuscarSuperlineas] = useState<number>(0);
 
   return (
     <FiltrosContext.Provider
@@ -143,6 +148,8 @@ export const FiltrosProvider = ({ children }: { children: ReactNode }) => {
         setBuscarMarcas,
         buscarLineas,
         setBuscarLineas,
+        buscarSuperlineas,
+        setBuscarSuperlineas,
       }}
     >
       {children}

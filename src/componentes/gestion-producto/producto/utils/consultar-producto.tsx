@@ -33,6 +33,7 @@ import { ProductoNotificacion, EntidadTipo } from "../../../NotificacionModal/in
 import { getAuthData, getRoles, getUsuarioId } from "../../../../utils/auth";
 import { puedeHacerAcciones } from "../domain/permisos-producto";
 import ProveedorService from "../../../gestion-organizacion/proveedor/services/proveedor-service";
+import SuperlineaService from "../../superlinea/services/superlinea-service";
 import { getApiErrorCategory, getApiErrorMessage, normalizeApiError } from "../../../../utils/errores";
 import { textoPresentacion } from "../domain/presentacion-producto";
 import { EliminadoBadge } from "../componentes/eliminado-badge";
@@ -66,6 +67,7 @@ export default function ConsultarProductos() {
   const [auditoria, setAuditoria] = useState<Auditoria>({} as Auditoria);
   const isMounted = useRef(false);
   const inicializacionCompleta = useRef(false);
+  const busquedaRequestId = useRef(0);
   const { empresaId } = getAuthData();
 
   // =========================
@@ -86,6 +88,7 @@ export default function ConsultarProductos() {
     setBuscar,
     busquedaRapida,
     setBusquedaRapida,
+    buscarSuperlineas,
   } = useFiltrosContext();
 
   const filtrosInicialesConsultarProducto = useFiltrosIniciales("consultar-producto");
@@ -102,6 +105,7 @@ export default function ConsultarProductos() {
     setLineas,
     setMarcas,
     setProveedores,
+    setSuperlineas,
   } = useCatalogosContext();
   
   // Setear qué filtros mostrar en la sidebar
@@ -112,6 +116,7 @@ export default function ConsultarProductos() {
       denominacion: true,
       codigoProveedor: true,
       linea: true,
+      superlinea: true,
       marca: true,
       proveedor: true,
       conStock: true,
@@ -125,6 +130,7 @@ export default function ConsultarProductos() {
 
   useEffect(() => {
     if (!inicializacionCompleta.current) return;
+    if (!codigo.trim()) return;
     const timer = setTimeout(() => {
       handleBuscarProductosRapido();
     }, 400);
@@ -214,6 +220,26 @@ export default function ConsultarProductos() {
   useEffect(() => {
     fetchLineas();
   }, [valoresFiltros.denominacionLinea]);
+
+  const fetchSuperlineas = async () => {
+    const denominacion = valoresFiltros.denominacionSuperlinea?.trim();
+    if (!denominacion) {
+      setSuperlineas([]);
+      return;
+    }
+
+    try {
+      const response = await SuperlineaService.obtener({ denominacion, skip: 0, take: 10 });
+      setSuperlineas(response.data);
+    } catch (err: unknown) {
+      console.error("Error al obtener SuperLíneas:", err);
+      setError("No se pudieron cargar las SuperLíneas.");
+    }
+  };
+
+  useEffect(() => {
+    if (buscarSuperlineas > 0) fetchSuperlineas();
+  }, [buscarSuperlineas]);
 
   const fetchMarcas = async () => {
     setError(null);
@@ -443,28 +469,7 @@ export default function ConsultarProductos() {
       duration: 3000,
     });
 
-    setLoading(true);
-
-    const filtrosConPaginacion = {
-      denominacion: valoresFiltros.denominacion,
-      codigoProveedor: valoresFiltros.codigoProveedor,
-      codigoReferencia: valoresFiltros.codigoReferencia,
-      lineaId: valoresFiltros.lineaId,
-      marcaId: valoresFiltros.marcaId,
-      proveedorId: valoresFiltros.proveedorId,
-      conStock: valoresFiltros.conStock,
-      codReferenciaExacto: valoresFiltros.codReferenciaExacto,
-      codProveedorExacto: valoresFiltros.codProveedorExacto,
-      incluirEliminados: mostrarEliminados,
-      skip: skip,
-      take: take,
-    };
-
-    const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
-
-    setEntidadesTotales(productosFiltrados.total);
-    setProductos(productosFiltrados.data);
-    setLoading(false);
+    await handleBuscarProductos();
   };
 
   const handleActualizarSuccess = async (mensajeAlerta: string) => {
@@ -485,34 +490,29 @@ export default function ConsultarProductos() {
 
   const handleBuscarProductos = async (botonBuscar?: boolean) => {
     setBusquedaRapida(false);
+    const requestId = ++busquedaRequestId.current;
     if (botonBuscar) {
       resetearPaginacion();
     }
     setLoading(true);
 
-    const filtrosConPaginacion = {
-      denominacion: valoresFiltros.denominacion,
-      codigoProveedor: valoresFiltros.codigoProveedor,
-      codigoReferencia: valoresFiltros.codigoReferencia,
-      codProveedorExacto: valoresFiltros.codProveedorExacto,
-      incluirEliminados: mostrarEliminados,
-      codReferenciaExacto: valoresFiltros.codReferenciaExacto,
-      lineaId: valoresFiltros.lineaId,
-      marcaId: valoresFiltros.marcaId,
-      proveedorId: valoresFiltros.proveedorId,
-      conStock: valoresFiltros.conStock,
-      skip: skip,
-      take: take,
-    };
-
     try {
-      const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
+      const productosFiltrados = await ProductoService.buscarPorFiltros({
+        denominacion: valoresFiltros.denominacion,
+        linea: valoresFiltros.denominacionLinea,
+        superlinea: valoresFiltros.denominacionSuperlinea,
+        incluirEliminados: mostrarEliminados,
+        skip: botonBuscar ? 0 : skip,
+        take,
+      });
+      if (requestId !== busquedaRequestId.current) return;
       setProductos(productosFiltrados.data);
       setEntidadesTotales(productosFiltrados.total);
     } catch (err: unknown) {
+      if (requestId !== busquedaRequestId.current) return;
       notificarErrorBusqueda(err);
     } finally {
-      setLoading(false);
+      if (requestId === busquedaRequestId.current) setLoading(false);
     }
   };
 
@@ -529,7 +529,9 @@ export default function ConsultarProductos() {
   };
 
   const handleBuscarProductosRapido = async (botonBuscar?: boolean) => {
+    if (!codigo.trim()) return;
     setBusquedaRapida(true);
+    const requestId = ++busquedaRequestId.current;
     if (botonBuscar) {
       resetearPaginacion();
     }
@@ -545,6 +547,7 @@ export default function ConsultarProductos() {
 
     try {
       const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
+      if (requestId !== busquedaRequestId.current) return;
       setProductos(productosFiltrados.data);
       setEntidadesTotales(productosFiltrados.total);
     } catch (err: unknown) {
@@ -675,19 +678,23 @@ export default function ConsultarProductos() {
 
               <CardContent className="p-0">
                 <FiltrosAplicados />
-                <DatosTabla
-                  productos={productos}
-                  columns={columns}
-                  puedeAccionar={puedeHacerAcciones(getRoles())}
-                  onEditar={handleAbrirActualizarProducto}
-                  onInfo={handleMostrarInfo}
-                  onDelete={handleDelete}
-                  onAjustarStock={handleAbrirAjusteStock}
-                  onMovimientos={handleMostrarMovimientosStock}
-                  onCambioPrecios={handleMostrarCambioPrecios}
-                  onHistorial={handleMostrarHistorialPrecios}
-                  onNotificar={handleNotificar}
-                />
+                {productos.length === 0 ? (
+                  <p className="py-12 text-center text-gray-500 dark:text-gray-400">No se encontraron productos.</p>
+                ) : (
+                  <DatosTabla
+                    productos={productos}
+                    columns={columns}
+                    puedeAccionar={puedeHacerAcciones(getRoles())}
+                    onEditar={handleAbrirActualizarProducto}
+                    onInfo={handleMostrarInfo}
+                    onDelete={handleDelete}
+                    onAjustarStock={handleAbrirAjusteStock}
+                    onMovimientos={handleMostrarMovimientosStock}
+                    onCambioPrecios={handleMostrarCambioPrecios}
+                    onHistorial={handleMostrarHistorialPrecios}
+                    onNotificar={handleNotificar}
+                  />
+                )}
 
                 <div className="lg:hidden space-y-3">
                   {productos.map((producto) => (
