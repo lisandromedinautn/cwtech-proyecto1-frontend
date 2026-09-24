@@ -1,11 +1,6 @@
 import React from "react";
 import { Navigate, useLocation, Outlet } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-import {
-  TipoAlertaConfirmacion,
-  TituloAlertaConfirmacion,
-  useConfirmation,
-} from "../componentes/herramientas/alertas/alertas-confirmacion";
 
 interface PrivateRouteProps {
   allowedRoles: number[];

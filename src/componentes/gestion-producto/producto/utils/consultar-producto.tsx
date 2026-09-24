@@ -64,21 +64,14 @@ export default function ConsultarProductos() {
   const isMounted = useRef(false);
   const inicializacionCompleta = useRef(false);
   const { empresaId } = getAuthData();
-  
-   // =========================
-    // PAGINACIÓN
-    // =========================
-    const {
-      paginaActual,
-      entidadesTotales,
-      skip,
-      take,
-      setEntidadesTotales,
-      handlePageChange,
-      resetearPaginacion,
-    } = usePaginacion(PAGINACION.TAKE_DEFAULT);
 
-    // MANEJO DE FILTROS ========================================================
+  // =========================
+  // PAGINACIÓN
+  // =========================
+  const { paginaActual, entidadesTotales, skip, take, setEntidadesTotales, handlePageChange, resetearPaginacion } =
+    usePaginacion(PAGINACION.TAKE_DEFAULT);
+
+  // MANEJO DE FILTROS ========================================================
   const [filtrosInicializados, setFiltrosInicializados] = useState(false);
   const {
     setFiltrosNecesarios,
@@ -184,12 +177,9 @@ export default function ConsultarProductos() {
 
 
   // =========================
-    // IMPRESIÓN
-    // =========================
-    const {
-      handleImprimirTodo,
-      handleImprimirPagina,
-    } = useProductoImpresion();
+  // IMPRESIÓN
+  // =========================
+  const { handleImprimirTodo, handleImprimirPagina } = useProductoImpresion();
 
   const fetchLineas = async () => {
     setError(null);
@@ -198,7 +188,7 @@ export default function ConsultarProductos() {
       if (valoresFiltros.denominacionLinea && valoresFiltros.denominacionLinea.length >= caracteresParaBusqueda) {
         const lineasTotales = await ProductoService.obtenerTotales(
           { denominacion: valoresFiltros.denominacionLinea || " " },
-          "lineas"
+          "lineas",
         );
         setLineas(lineasTotales.data);
       }
@@ -220,7 +210,7 @@ export default function ConsultarProductos() {
       if (valoresFiltros.denominacionMarca && valoresFiltros.denominacionMarca.length >= caracteresParaBusqueda) {
         const marcasTotales = await ProductoService.obtenerTotales(
           { denominacion: valoresFiltros.denominacionMarca || " " },
-          "marcas"
+          "marcas",
         );
         setMarcas(marcasTotales.data);
       }
@@ -535,7 +525,7 @@ export default function ConsultarProductos() {
     {
       header: "Cód.",
       accessor: "codigoProveedor",
-      flex: 0.3,
+      flex: 0.27,
       type: "text",
       align: "right",
       editable: false,
@@ -544,7 +534,7 @@ export default function ConsultarProductos() {
     {
       header: "Denominación",
       accessor: "denominacion",
-      flex: 2,
+      flex: 0.8,
       type: "text",
       editable: false,
       formatFunction: ({ value, row }) => (
@@ -562,14 +552,23 @@ export default function ConsultarProductos() {
       scrollable: false,
     },
     {
-      header: "Precio", 
-      accessor:"precio",
-      flex:0.3,
-      type:"text", 
-      editable:false,
-      align:"left", 
-      formatFunction: ({ value }) => <span>${formatPrice(value)}</span>,
-    }
+      header: "Presentación",
+      accessor: "presentacion",
+      flex: 0.6,
+      type: "text",
+      editable: false,
+      formatFunction: ({ value }) => <span>{textoPresentacion(value)}</span>,
+    },
+    {
+      header: "Precio",
+      accessor: "precio",
+      flex: 0.3,
+      type: "text",
+      editable: false,
+      align: "left",
+      autoHeight: true,
+      formatFunction: ({ value }) => <span className="break-all">${formatPrice(value)}</span>,
+    },
   ];
 
   return (
@@ -592,38 +591,38 @@ export default function ConsultarProductos() {
             {/* Tabla de productos */}
             <Card className="border-gray-200 dark:border-slate-700">
               <div className="hidden lg:block">
-              {/*  HEADER Desktop */}
-              <ProductosHeader
-                roles={getRoles()}
-                codigo={codigo}
-                exacto={exacto}
-                onChangeCodigo={setCodigo}
-                onChangeExacto={setExacto}
-                onBuscarRapido={() => handleBuscarProductosRapido(true)}
-                onNuevo={openModal}
-                total={entidadesTotales}
-                mostrados={productos.length}
-                paginaActual={paginaActual}
-                onImprimirTodo={handleImprimirTodo}
-                onImprimirPagina={handleImprimirPagina}
-              />
+                {/*  HEADER Desktop */}
+                <ProductosHeader
+                  roles={getRoles()}
+                  codigo={codigo}
+                  exacto={exacto}
+                  onChangeCodigo={setCodigo}
+                  onChangeExacto={setExacto}
+                  onBuscarRapido={() => handleBuscarProductosRapido(true)}
+                  onNuevo={openModal}
+                  total={entidadesTotales}
+                  mostrados={productos.length}
+                  paginaActual={paginaActual}
+                  onImprimirTodo={handleImprimirTodo}
+                  onImprimirPagina={handleImprimirPagina}
+                />
               </div>
 
               <div className="lg:hidden">
                 <ProductosHeaderLg
-                codigo={codigo}
-                exacto={exacto}
-                roles={getRoles()}
-                onChangeCodigo={setCodigo}
-                onChangeExacto={setExacto}
-                onBuscarRapido={() => handleBuscarProductosRapido(true)}
-                onNuevo={openModal}
-                total={entidadesTotales}
-                mostrados={productos.length}
-                paginaActual={paginaActual}
-                onImprimirTodo={handleImprimirTodo}
-                onImprimirPagina={handleImprimirPagina}
-              />
+                  codigo={codigo}
+                  exacto={exacto}
+                  roles={getRoles()}
+                  onChangeCodigo={setCodigo}
+                  onChangeExacto={setExacto}
+                  onBuscarRapido={() => handleBuscarProductosRapido(true)}
+                  onNuevo={openModal}
+                  total={entidadesTotales}
+                  mostrados={productos.length}
+                  paginaActual={paginaActual}
+                  onImprimirTodo={handleImprimirTodo}
+                  onImprimirPagina={handleImprimirPagina}
+                />
               </div>
 
               <CardContent className="p-0">
@@ -641,7 +640,7 @@ export default function ConsultarProductos() {
                   onHistorial={handleMostrarHistorialPrecios}
                   onNotificar={handleNotificar}
                 />
-                  
+
                 <div className="lg:hidden space-y-3">
                   {productos.map((producto) => (
                     <DatosCard
@@ -652,23 +651,12 @@ export default function ConsultarProductos() {
                       onDelete={handleDelete}
                       onMovimientos={handleMostrarMovimientosStock}
                       onCambioPrecios={handleMostrarCambioPrecios}
-                      onHistorial={
-                        puedeHacerAcciones(getRoles())
-                          ? handleMostrarHistorialPrecios
-                          : undefined
-                      }
+                      onHistorial={puedeHacerAcciones(getRoles()) ? handleMostrarHistorialPrecios : undefined}
                       onNotificar={handleNotificar}
-                      onAjustarStock={
-                        puedeHacerAcciones(getRoles())
-                          ? handleAbrirAjusteStock
-                          : undefined
-                      }
+                      onAjustarStock={puedeHacerAcciones(getRoles()) ? handleAbrirAjusteStock : undefined}
                     />
                   ))}
                 </div>
-                
-
-
               </CardContent>
             </Card>
 
@@ -687,7 +675,7 @@ export default function ConsultarProductos() {
         )}
       </div>
 
-     {/* ================= MODALES ================= */}
+      {/* ================= MODALES ================= */}
       <ProductosModales
         isAltaOpen={isModalOpen}
         mostrarActualizarProducto={mostrarActualizarProducto}
@@ -698,12 +686,10 @@ export default function ConsultarProductos() {
         mostrarCambioPrecios={mostrarCambioPrecios}
         mostrarProductosAlternativos={mostrarProductosAlternativos}
         mostrarDeQuienEsAlternativo={mostrarDeQuienEsAlternativo}
-
         productoSeleccionado={productoSeleccionado}
         productoHistorial={productoHistorial}
         productoInfo={productoInfo}
         auditoria={auditoria}
-
         onCloseAlta={closeModal}
         onCloseActualizar={handleCerrarActualizarProducto}
         onCloseAjusteStock={handleCerrarAjusteStock}
@@ -713,7 +699,6 @@ export default function ConsultarProductos() {
         onCloseCambioPrecios={handleCerrarCambioPrecios}
         onCloseProductosAlternativos={handleCerrarProductosAlternativos}
         onCloseDeQuienEsAlternativo={handleCerrarDeQuienEsAlternativo}
-
         onSuccessAlta={handleSuccess}
         onSuccessActualizar={handleActualizarSuccess}
         onSuccessAjusteStock={handleAjusteStockSuccess}
@@ -733,8 +718,6 @@ export default function ConsultarProductos() {
         />
       )}
       {/* =========================================== */}
-
-
     </div>
   );
 }

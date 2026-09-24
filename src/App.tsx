@@ -12,6 +12,8 @@ import ConsultarCliente from "./componentes/gestion-organizacion/cliente/utils/c
 import ConsultarProveedores from "./componentes/gestion-organizacion/proveedor/utils/consultar-proveedor";
 import ConsultarLocalidad from "./componentes/gestion-organizacion/localidad/utils/consultar-localidad";
 import ConsultarLinea from "./componentes/gestion-producto/linea/utils/consultar-linea";
+import ConsultarSuperlinea from "./componentes/gestion-producto/superlinea/utils/consultar-superlinea";
+import ConsultarEnvasesPresentacion from "./componentes/gestion-producto/envase-presentacion/utils/consultar-envase-presentacion";
 
 import PrivateRoute from "./utils/PrivateRoute";
 import { Rol } from "./interfaces/generales/interfaces-generales";
@@ -41,9 +43,11 @@ function App() {
               <Route index element={<DashboardHome />} />
               <Route element={<PrivateRoute allowedRoles={[Rol.EMPLEADO, Rol.ADMINISTRADOR]} />}>
                 <Route path="marca" element={<ConsultarMarcas />} />
+                <Route path="envase-presentacion" element={<ConsultarEnvasesPresentacion />} />
               </Route>
-     
+
               <Route path="linea" element={<ConsultarLinea />} />
+              <Route path="superlinea" element={<ConsultarSuperlinea />} />
               <Route path="usuario" element={<GestionUsuario />} />
               <Route path="producto" element={<ConsultarProducto />} />
               <Route path="cliente" element={<ConsultarCliente />} />
@@ -52,9 +56,7 @@ function App() {
               <Route path="cambio-precios-masivo" element={<CambioPreciosMasivo />} />
               <Route path="lista-precios" element={<ListaPrecios />} />
               <Route path="localidad" element={<ConsultarLocalidad />} />
-              <Route path="condicion-iva" element={<CondicionIva />} />     
-
-
+              <Route path="condicion-iva" element={<CondicionIva />} />
             </Route>
           </Route>
 

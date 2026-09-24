@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { CardContent, CardFooter } from "../../../ui/Card";
@@ -6,11 +6,15 @@ import { Button } from "../../../ui/Button";
 import FormInput from "../../../herramientas/formateo-de-campos/form-input";
 import React from "react";
 import { Card } from "../../../ui/Card";
-import { FormValues, schema, transformData, SublineasEnPayload, transformarSublineas } from "../interfaces/interfaces-validaciones-linea";
+import {
+  FormValues,
+  schema,
+  transformData,
+} from "../interfaces/interfaces-validaciones-linea";
 import LineaService from "../services/linea-service";
 import { Linea } from "../../../../interfaces/gestion-producto/linea/interfaces-linea";
 
-import { Layers, PlusCircle } from "lucide-react";
+import { Layers } from "lucide-react";
 import { parseApiError } from "../../../../utils/errores";
 import { ResponsePost } from "../../../../interfaces/generales/interfaces-generales";
 import CantidadesInput from "../../../herramientas/formateo-de-campos/cantidades-input";
@@ -21,6 +25,7 @@ import {
   TituloAlertaConfirmacion,
   useConfirmation,
 } from "../../../herramientas/alertas/alertas-confirmacion";
+import SuperlineasSelector from "../../superlinea/componentes/superlineas-selector";
 
 export default function RegistrarActualizarLineaForm({
   linea,
@@ -48,7 +53,6 @@ export default function RegistrarActualizarLineaForm({
     setError,
   } = methods;
 
- 
   const stockMinimo = watch("stockMinimo");
   const utilizaStockMinimo = watch("utilizaStockMinimo");
 
@@ -70,7 +74,7 @@ export default function RegistrarActualizarLineaForm({
           setValue("observacion", linea.observacion || null);
           setValue("stockMinimo", linea.stockMinimo || 0);
           setValue("utilizaStockMinimo", linea.utilizaStockMinimo || false);
-          
+          setValue("superlineaId", linea.superlineaId);
         }
       } catch (error) {
         console.error("Error al obtener los datos:", error);
@@ -82,8 +86,6 @@ export default function RegistrarActualizarLineaForm({
   const onSubmit = async (formData: FormValues) => {
     let response: ResponsePost;
     try {
-     
-
       if (linea) {
         const payload = { ...formData, usuarioUpdatedId: usuarioId };
         response = await LineaService.actualizar(linea.id, payload);
@@ -98,11 +100,6 @@ export default function RegistrarActualizarLineaForm({
     }
   };
 
- 
-
-  
-
-  
   const handleOnClose = async () => {
     const confirmed = await showConfirmation({
       type: TipoAlertaConfirmacion.DEFAULT,
@@ -128,16 +125,20 @@ export default function RegistrarActualizarLineaForm({
         <fieldset disabled={linea?.sistema === 1}>
           <FormProvider {...methods}>
             <form onSubmit={handleSubmit(onSubmit)}>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 px-6 py-4">
-                <div className="lg:col-span-2">
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-6 py-4">
+                <div className="lg:col-span-1">
                   <FormInput name="denominacion" label="Denominación" placeholder="Ingresa la denominación" />
                 </div>
 
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-1">
+                  <SuperlineasSelector name="superlineaId" label="SuperLínea" />
+                </div>
+
+                <div className="lg:col-span-1">
                   <FormInput name="observacion" label="Observación" placeholder="Ingresa una observación (opcional)" />
                 </div>
 
-                <div className="flex items-end gap-2 lg:col-span-1">
+                <div className="flex items-end gap-2 lg:col-span-3">
                   <label className="flex items-center pb-2">
                     <input
                       type="checkbox"
@@ -154,13 +155,20 @@ export default function RegistrarActualizarLineaForm({
                   />
                 </div>
               </CardContent>
+
               {errors.root?.message && (
                 <div className="text-red-600 text-center mb-4">{String(errors.root.message)}</div>
               )}
 
               <CardFooter className="flex justify-center">
                 <Button type="submit" disabled={isSubmitting} className="btn btn-dark">
-                  {isSubmitting ? (linea ? "Actualizando..." : "Registrando...") : linea ? "Actualizar" : "Registrar"}
+                  {isSubmitting
+                    ? linea
+                      ? "Actualizando..."
+                      : "Registrando..."
+                    : linea
+                      ? "Actualizar"
+                      : "Registrar"}
                 </Button>
               </CardFooter>
             </form>
@@ -168,7 +176,6 @@ export default function RegistrarActualizarLineaForm({
         </fieldset>
       </Card>
 
-     
       <AlertasConfirmacion />
     </div>
   );

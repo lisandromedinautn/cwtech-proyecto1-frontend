@@ -4,6 +4,12 @@ import { AlicuotaIva } from "../../../../interfaces/generales/interfaces-general
 import { Producto } from "../../../../interfaces/gestion-producto/producto/interfaces-producto";
 import { ItemProveedor } from "../../../../interfaces/gestion-producto/producto/interfaces-item-proveedor";
 import { ItemProdAlternativo } from "../../../../interfaces/gestion-producto/producto/interfaces-item-prod-alternativo";
+import {
+  PresentacionFormValues,
+  presentacionDesdeProducto,
+  presentacionParaPayload,
+  presentacionVacia,
+} from "../domain/presentacion-producto";
 
 //===================== interfaces para las cosas que se van a ingresar en el formulario y es necesario validarlas ==========//
 
@@ -30,6 +36,7 @@ export interface FormValues {
   cantidadPorPack?: number;
   utilizaStockMinimo?: boolean;
   utilizaPack?: boolean;
+  presentacion?: PresentacionFormValues;
  /*  porcentajeOcasional: number;
   precioOcasional: number;
   porcentajeMayorista: number;
@@ -55,10 +62,50 @@ export const sinCamposPrecioDerivados = (formData: FormValues): FormValues => {
   return payload;
 };
 
+// Payload del alta y la modificación. La presentación viaja solo si tiene datos
+// y nunca como null (el backend lo rechaza si el producto ya tiene una).
+export const armarPayloadProducto = (formData: FormValues) => {
+  const { presentacion, ...resto } = sinCamposPrecioDerivados(formData);
+  const presentacionPayload = presentacionParaPayload(presentacion);
+  return presentacionPayload ? { ...resto, presentacion: presentacionPayload } : resto;
+};
+
 //===================== schema de validacion ============================================//
 
-export const schema = (utilizaStockMinimo: boolean, utilizaPack: boolean, usaOferta: boolean) =>
+// La presentación (CR-002) es obligatoria en el alta y en los productos que ya
+// tienen una (no se puede quitar). En los productos anteriores es opcional, pero
+// si se completa un campo hay que completar los tres.
+const campoPresentacion = (presentacionObligatoria: boolean) =>
+  function (this: yup.TestContext, value: unknown) {
+    const exigir = presentacionObligatoria || !presentacionVacia(this.parent as PresentacionFormValues);
+    return !exigir || (value !== null && value !== undefined && value !== "");
+  };
+
+const schemaPresentacion = (presentacionObligatoria: boolean) =>
+  yup.object({
+    envaseId: yup
+      .number()
+      .nullable()
+      .test("envase-requerido", "Seleccioná un envase.", campoPresentacion(presentacionObligatoria)),
+    cantidad: yup
+      .number()
+      .typeError("El valor debe ser un número.")
+      .nullable()
+      .test("cantidad-requerida", "Ingresá el valor.", campoPresentacion(presentacionObligatoria)),
+    unidad: yup
+      .string()
+      .nullable()
+      .test("unidad-requerida", "Seleccioná la unidad de medida.", campoPresentacion(presentacionObligatoria)),
+  });
+
+export const schema = (
+  utilizaStockMinimo: boolean,
+  utilizaPack: boolean,
+  usaOferta: boolean,
+  presentacionObligatoria = false,
+) =>
   yup.object().shape({
+    presentacion: schemaPresentacion(presentacionObligatoria),
     denominacion: yup
       .string()
       .trim()
@@ -184,6 +231,7 @@ export const transformData = (producto: Producto): FormValues => {
     cantidadPorPack: producto.cantidadPorPack ?? null,
     utilizaStockMinimo: producto.utilizaStockMinimo,
     utilizaPack: producto.utilizaPack,
+    presentacion: presentacionDesdeProducto(producto.presentacion),
  //   cantidadOferta: producto.cantidadOferta ?? 0,
    /*  porcentajeOcasional: producto.porcentajeOcasional ?? 0,
     porcentajeMayorista: producto.porcentajeMayorista ?? 0,
