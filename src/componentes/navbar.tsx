@@ -1,4 +1,4 @@
-import { Bell, User, Sun, Moon, Lock, LogOut } from "lucide-react";
+import { Bell, User, Sun, Moon, Lock, LogOut, Check, X, AlertTriangle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/DropDownMenu";
 import { Button } from "./ui/Button";
 import { cn } from "../utils/Utils";
@@ -16,6 +16,7 @@ import CambiarContrasenaModal from "./gestion-usuario/cambiar-contrasena-modal";
 import { ModalPortal } from "../utils/modal-portal";
 
 import { getEmpresaId } from "../utils/auth";
+import { useNotificaciones } from "../context/notificaciones-context";
 
 function ThemeToggleButton() {
   const { theme, toggleTheme } = useTheme();
@@ -32,19 +33,63 @@ function ThemeToggleButton() {
 }
 
 function NotificationsButton() {
-
-  const navigate = useNavigate();
+  const { notificaciones, quitarNotificacion, limpiarNotificaciones } = useNotificaciones();
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => navigate("/admin/notificaciones")}
-      className="h-10 w-10 bg-principal rounded-lg transition-all duration-200 hover:bg-blue-900 hover:scale-105 text-white border border-white/20 hover:border-white/40 relative"
-    >
-      <Bell className="h-5 w-5" />
-
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Abrir notificaciones"
+          className="h-10 w-10 bg-principal rounded-lg transition-all duration-200 hover:bg-blue-900 hover:scale-105 text-white border border-white/20 hover:border-white/40 relative"
+        >
+          <Bell className="h-5 w-5" />
+          {notificaciones.length > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              {notificaciones.length > 9 ? "9+" : notificaciones.length}
+            </span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="mt-2 w-80 border border-slate-200 bg-white p-0 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+          <div>
+            <p className="font-semibold text-slate-800 dark:text-white">Notificaciones</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {notificaciones.length === 0 ? "No hay novedades" : `${notificaciones.length} pendiente${notificaciones.length === 1 ? "" : "s"}`}
+            </p>
+          </div>
+          {notificaciones.length > 0 && (
+            <button type="button" onClick={limpiarNotificaciones} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400">
+              <Check className="h-3.5 w-3.5" />
+              Limpiar
+            </button>
+          )}
+        </div>
+        <div className="max-h-80 overflow-y-auto p-2">
+          {notificaciones.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+              <Bell className="h-6 w-6" />
+              <p className="text-sm">No tenés notificaciones nuevas.</p>
+            </div>
+          ) : (
+            notificaciones.map((notificacion) => (
+              <div key={notificacion.id} className="flex gap-3 rounded-md p-3 hover:bg-slate-100 dark:hover:bg-slate-700">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white">{notificacion.title}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">{notificacion.message}</p>
+                </div>
+                <button type="button" onClick={() => quitarNotificacion(notificacion.id)} aria-label={`Quitar notificación: ${notificacion.title}`} className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-600 dark:hover:text-white">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

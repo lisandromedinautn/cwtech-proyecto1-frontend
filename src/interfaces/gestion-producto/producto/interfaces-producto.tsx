@@ -81,6 +81,8 @@ export interface ConsultarProducto {
   codigoProveedor: string;
   codigoReferencia: string;
   stock: number;
+  stockMinimo?: number;
+  utilizaStockMinimo?: boolean;
   precio: number;
   precioOferta: number;
   ubicacion?: string | null;
