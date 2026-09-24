@@ -56,6 +56,7 @@ export default function ConsultarProductos() {
   const [modalAbierto, setModalAbierto] = useState<boolean>(false);
   const [productoNotificacionSeleccionado, setProductoNotificacionSeleccionado] = useState<ProductoNotificacion | null>(null);
   const notificadosStockCriticoRef = useRef<Set<number>>(new Set());
+  const productosEliminadosRef = useRef<Set<number>>(new Set());
   const usuarioId = getUsuarioId();
   const { configuracion } = useConfiguracionSistema();
   const [codigo, setCodigo] = useState<string>("");
@@ -92,6 +93,17 @@ export default function ConsultarProductos() {
   const { alerts, addAlert, removeAlert } = useAlerts();
   const { agregarNotificacion } = useNotificaciones();
   const { showConfirmation, AlertasConfirmacion } = useConfirmation();
+
+  const excluirProductosEliminados = (items: ConsultarProducto[]) =>
+    items.filter((producto) => !productosEliminadosRef.current.has(Number(producto.id)));
+
+  const aplicarResultados = (resultado: { data: ConsultarProducto[]; total: number }) => {
+    const data = excluirProductosEliminados(resultado.data);
+    const eliminadosEnRespuesta = resultado.data.length - data.length;
+
+    setProductos(data);
+    setEntidadesTotales(Math.max(0, resultado.total - eliminadosEnRespuesta));
+  };
 
     // Contexto de catálogos
   const {
@@ -313,7 +325,8 @@ export default function ConsultarProductos() {
     let response: ResponsePost;
     try {
       response = await ProductoService.eliminar(id, usuarioId);
-      setProductos(productos.filter((producto) => producto.id !== id));
+      productosEliminadosRef.current.add(id);
+      setProductos((productosActuales) => productosActuales.filter((producto) => producto.id !== id));
       addAlert({
         type: TipoAlerta.SUCCESS,
         title: TituloAlerta.SUCCESS,
@@ -321,6 +334,7 @@ export default function ConsultarProductos() {
         autoClose: true,
         duration: 3000,
       });
+      await handleBuscarProductos();
     } catch (err: unknown) {
       const apiError = normalizeApiError(err);
       addAlert({
@@ -443,8 +457,7 @@ export default function ConsultarProductos() {
 
     const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
 
-    setEntidadesTotales(productosFiltrados.total);
-    setProductos(productosFiltrados.data);
+    aplicarResultados(productosFiltrados);
     setLoading(false);
   };
 
@@ -486,8 +499,7 @@ export default function ConsultarProductos() {
     };
 
     const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
-    setProductos(productosFiltrados.data);
-    setEntidadesTotales(productosFiltrados.total);
+    aplicarResultados(productosFiltrados);
     setLoading(false);
   };
 
@@ -506,8 +518,7 @@ export default function ConsultarProductos() {
     };
 
     const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
-    setProductos(productosFiltrados.data);
-    setEntidadesTotales(productosFiltrados.total);
+    aplicarResultados(productosFiltrados);
     setLoading(false);
   };
 
