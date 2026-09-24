@@ -595,3 +595,21 @@ Ninguna por ahora; pendiente de revisión del equipo.
 - `vitest run`: 15 archivos y 54 tests en verde. Antes del fix del import, 4 fallidos.
 - `tsc --noEmit -p tsconfig.app.json`: 126 errores. Antes del fix eran 129; el import resolvió 3.
 - **Sin verificar:** la navegación en el navegador.
+
+### Segundo import perdido: `textoPresentacion` (pantalla de productos en blanco)
+
+- El mismo merge `3b8dd1b` perdió también el import de `textoPresentacion` en
+  `consultar-producto.tsx`, aunque la columna de presentación lo sigue usando. La tabla tiraba
+  `ReferenceError: textoPresentacion is not defined` al renderizar las celdas y la pantalla quedaba
+  en blanco. Lo reportó el equipo con la traza del navegador. Se restauró el import de
+  `9e263f1`, y `tsc` bajó de 126 a 125 errores.
+- **Por qué no lo detectó ningún test:** ninguno monta `ConsultarProductos`. Un montaje de
+  diagnóstico en jsdom tampoco lo reprodujo, porque AG Grid no llega a pintar las celdas sin
+  tamaño real. `tsc` sí lo marca (TS2304), igual que el import de `PrivateRoute`. Correr
+  `tsc --noEmit` antes de mergear habría evitado los dos.
+- **Deuda vieja, no tocada:** `tsc` marca otros 8 identificadores sin definir (TS2304) en
+  `sidebarFiltros.tsx` (`CondicionesCerrado`, `EstadoRecibo`, `EstadoPresupuestoN`,
+  `EstadosPedidoVentaBusqueda`, `EstadoCarteraCheques`, `EstadoConfirmacionCarteraCheques`,
+  `OrdenCarteraCheques`) y en `proveedor-modales.tsx` (`ConsultarMovimientosCuenta`). Vienen del
+  commit inicial `02d36a5` y solo se ejecutan en filtros o modales de módulos que producto no usa.
+  Si alguna pantalla los activa, va a romper igual.
