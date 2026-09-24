@@ -91,7 +91,7 @@ describe("RegistrarActualizarProductoForm", () => {
     vi.restoreAllMocks();
   });
 
-  it("envía costo y margen, pero no el precio derivado", async () => {
+  it("envía costo, margen y stock inicial, pero no el precio derivado", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const onSuccess = vi.fn();
@@ -104,6 +104,8 @@ describe("RegistrarActualizarProductoForm", () => {
     await user.type(screen.getByLabelText("Costo"), "100");
     await user.clear(screen.getByLabelText("Margen particular"));
     await user.type(screen.getByLabelText("Margen particular"), "20");
+    await user.clear(screen.getByLabelText("Stock inicial"));
+    await user.type(screen.getByLabelText("Stock inicial"), "10");
     await user.click(screen.getByRole("button", { name: "Seleccionar línea" }));
     await user.click(screen.getByRole("button", { name: "Seleccionar marca" }));
 
@@ -116,13 +118,13 @@ describe("RegistrarActualizarProductoForm", () => {
         denominacion: "producto de prueba",
         costo: 100,
         margen: 20,
+        stock: 10,
         lineaId: 1,
         marcaId: 2,
         usuarioCreatedId: 7,
       }),
     );
     expect(ProductoService.nuevo.mock.calls[0][0]).not.toHaveProperty("precio");
-    expect(ProductoService.nuevo.mock.calls[0][0]).not.toHaveProperty("stock");
     expect(onSuccess).toHaveBeenCalledWith("Producto creado");
     expect(onClose).toHaveBeenCalled();
   });

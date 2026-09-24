@@ -106,7 +106,6 @@ export default function RegistrarActualizarProductoForm({
   const observacionRef = useRef<HTMLInputElement>(null);
   const ubicacionRef = useRef<HTMLInputElement>(null);
   const selectTipoProductoRef = useRef<HTMLDivElement>(null);
-  const codigoBarraRef = useRef<HTMLInputElement>(null);
   const selectAlicuotaIvaRef = useRef<HTMLDivElement>(null);
   const precioOfertaRef = useRef<HTMLInputElement>(null);
   const denominacionLineaRef = useRef<HTMLInputElement>(null);
@@ -154,8 +153,6 @@ export default function RegistrarActualizarProductoForm({
           
           setValue("denominacion", producto.denominacion || "");
           setValue("observacion", producto.observacion || null);
-          setValue("codigoProveedor", producto.codigoProveedor || "");
-          setValue("codigoBarra", producto.codigoBarra || null);
           setValue("stock", producto.stock || 0);
           setValue("costo", producto.costo || 0);
           setValue("margen", producto.margen ?? null);
@@ -208,6 +205,7 @@ export default function RegistrarActualizarProductoForm({
       } else {
         const payload = {
           ...sinCamposPrecioDerivados(formData),
+          ...(formData.stock != null ? { stock: formData.stock } : {}),
           usuarioCreatedId: usuarioId,
         };
 
@@ -329,27 +327,6 @@ export default function RegistrarActualizarProductoForm({
                     
                   </div>
 
-                  <FormInput
-                    name="codigoProveedor"
-                    label="Codigo Interno"
-                    placeholder="Ingresa el Codigo Interno"
-                    disabled={producto && producto.sistema > 0 ? true : false}
-                  />
-
-                  <FormInput
-                    name="codigoReferencia"
-                    label="Codigo Referencia"
-                    placeholder="Ingresa el codigo de referencia"
-                  />
-
-                  <FormInput
-                    name="codigoBarra"
-                    label="Código De Barra"
-                    placeholder="Ingresa el código de barra (opcional)"
-                    inputRef={codigoBarraRef}
-                    onKeyDown={(e) => handleEnterEnSelect(e, "ALICUOTA-IVA")}
-                  />
-
                   {/* <FormInput
                     name="costo"
                     label="Costo"
@@ -455,15 +432,13 @@ export default function RegistrarActualizarProductoForm({
                   </div>
 
                   <div className="flex-1 min-w-[120px]">
-                    {producto ? (
-                      <CantidadesInput
-                        name={`stock`}
-                        label="Stock"
-                        value={stock || 0}
-                        onChange={(value) => setValue(`stock`, Number(value))}
-                        disabled={true}
-                      />
-                    ) : null}
+                    <CantidadesInput
+                      name={`stock`}
+                      label={producto ? "Stock" : "Stock inicial"}
+                      value={stock || 0}
+                      onChange={(value) => setValue(`stock`, Number(value))}
+                      disabled={producto ? true : false}
+                    />
                   </div>
                 </div>
 
