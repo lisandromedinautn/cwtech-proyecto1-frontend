@@ -777,6 +777,62 @@ Ninguna por ahora; pendiente de revisión del equipo.
 - **En vivo:** ver la verificación de la rama de unificación.
 - **Sin verificar:** la UI en el navegador.
 
+## [2026-09-24] PA-030 — Búsqueda por denominación, Línea y SuperLínea
+
+- **Tarjeta / CR:** PA-030 / CR-004
+- **Herramienta:** OpenCode (GPT-5.6 Luna) + Chrome DevTools MCP
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis fiel: adaptar la búsqueda de productos al contrato real de `/producto/search-by`, con
+filtros textuales combinables, paginación, estados de UI y tests; luego replicar para SuperLínea el
+flujo de Línea, donde Enter busca coincidencias y llena un `react-select`.
+
+### Respuesta / propuesta de la IA
+
+Se separó la búsqueda normal de la búsqueda rápida por código. La normal arma únicamente los
+parámetros textuales del contrato, omite vacíos y protege contra respuestas obsoletas. Para
+SuperLínea se replicó el patrón de Línea con un contador en el contexto, consulta a
+`SuperlineaService` y catálogo independiente.
+
+### Decisión tomada
+
+Se implementó la búsqueda PA-030 con `denominacion`, `linea`, `superlinea`, `skip`, `take` y el
+toggle existente de eliminados. Los valores se recortan antes de enviarse y Axios serializa la
+query. El selector de SuperLínea conserva la denominación elegida, porque ese es el parámetro que
+exige el backend.
+
+### Qué se descartó y por qué
+
+- **Enviar ids de Línea o SuperLínea:** se descartó porque el contrato exige coincidencias parciales
+  por denominación.
+- **Leer nombres de Línea o SuperLínea desde cada producto:** se descartó porque no forman parte del
+  DTO de búsqueda.
+- **Disparar la búsqueda rápida con código vacío:** se descartó para evitar que sobrescriba una
+  búsqueda normal.
+
+### Modificaciones sobre lo generado
+
+Se preservaron los cambios de `develop` relacionados con soft delete, notificaciones y auditoría al
+crear la rama de feature; los cambios de PA-030 se integraron sobre esa base.
+
+### Impacto
+
+Se modificaron `producto-service.tsx`, `consultar-producto.tsx`, `sidebarFiltros.tsx`,
+`catalogos-context.tsx` y `filtros-contesxt.tsx`. Se agregó el test de armado de parámetros de
+`producto-service`.
+
+### Verificación
+
+- `npm run build`: correcto.
+- Tests focalizados de PA-030: 5 en verde.
+- Chrome DevTools: `Choc` mostró `CHOCOLATES`; `Beb` mostró `BEBIDAS` y la selección dejó `BEBIDAS`
+  en el input. Se verificó `/api/superlinea/search-by?denominacion=Beb&skip=0&take=10`.
+- La suite completa mantiene 52 tests en verde y 4 fallos preexistentes de `PrivateRoute` por
+  `localStorage` no disponible.
+
 ## [2026-09-24] Unificación — `unificacion-testing-PA-053-PA-055`, rama única para llevar a `develop`
 
 - **Tarjeta / CR:** PA-053 y PA-055, más lo acumulado en testing (PA-020, arreglo de tests y la integración de PA-029)
