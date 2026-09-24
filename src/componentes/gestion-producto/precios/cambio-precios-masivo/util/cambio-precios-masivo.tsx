@@ -21,6 +21,7 @@ import ProductoService from "../../../producto/services/producto-service";
 import Paginacion from "../../../../herramientas/reutilizables/paginacion";
 import { usePaginacion } from "../../../../../hooks/use-paginacion";
 import { PAGINACION } from "../../../../../config/paginacion";
+import { textoPresentacion } from "../../../producto/domain/presentacion-producto";
 
 // TipoAumento.PORCENTAJE = 1, TipoAumento.MONTO_FIJO = 2
 const TIPO_PORCENTAJE = 1;
@@ -415,6 +416,15 @@ export default function CambioPreciosMasivo() {
             )}
           </div>
         ),
+      },
+      {
+        header: "Presentación",
+        accessor: "presentacion",
+        flex: 0.6,
+        type: "text",
+        editable: false,
+        scrollable: false,
+        formatFunction: ({ value }) => <span>{textoPresentacion(value)}</span>,
       },
       {
         header: "Precio",

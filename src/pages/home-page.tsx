@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "../componentes/ui/Button";
 import { Card, CardContent, CardDescription, CardTitle } from "../componentes/ui/Card";
-import { Package, Phone, Mail, MapPin, Users, Truck, Wheat } from "lucide-react";
+import { Package, Phone, Mail, MapPin, Users, Truck } from "lucide-react";
 import logo from "../assets/imagenes/cwtech-logo.webp";
 import { APP_CONFIG } from "../config/versionamiento";
 
@@ -92,7 +92,7 @@ export default function HomePage() {
       {/* Nosotros */}
       <section id="nosotros" className="py-16 bg-background">
         <div className="container mx-auto px-4 text-center space-y-6">
-          <Wheat className="h-12 w-12 mx-auto text-principal" />
+          <img src={logo} alt="Logo de CWTECH" className="h-12 w-12 mx-auto object-contain" />
           <h2 className="text-3xl font-bold">Siempre acompañando </h2>
           <p className="max-w-2xl mx-auto text-gray-700">
             Proyecto 1 con la misión de aprender.

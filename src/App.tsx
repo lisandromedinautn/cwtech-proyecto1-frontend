@@ -13,11 +13,13 @@ import ConsultarProveedores from "./componentes/gestion-organizacion/proveedor/u
 import ConsultarLocalidad from "./componentes/gestion-organizacion/localidad/utils/consultar-localidad";
 import ConsultarLinea from "./componentes/gestion-producto/linea/utils/consultar-linea";
 import ConsultarSuperlinea from "./componentes/gestion-producto/superlinea/utils/consultar-superlinea";
+import ConsultarEnvasesPresentacion from "./componentes/gestion-producto/envase-presentacion/utils/consultar-envase-presentacion";
 
 import PrivateRoute from "./utils/PrivateRoute";
 import { Rol } from "./interfaces/generales/interfaces-generales";
 import CambioPreciosMasivo from "./componentes/gestion-producto/precios/cambio-precios-masivo/util/cambio-precios-masivo";
 import DashboardHome from "./pages/dashboard-home";
+import { NotificacionesProvider } from "./context/notificaciones-context";
 
 import ListaPrecios from "./componentes/gestion-producto/precios/lista_precios/util/lista-precios";
 import ConsultarPersonal from "./componentes/gestion-organizacion/personal/utils/consultar-personal";
@@ -25,8 +27,9 @@ import ConsultarPersonal from "./componentes/gestion-organizacion/personal/utils
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <Routes>
+      <NotificacionesProvider>
+        <Router>
+          <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
 
@@ -40,6 +43,7 @@ function App() {
               <Route index element={<DashboardHome />} />
               <Route element={<PrivateRoute allowedRoles={[Rol.EMPLEADO, Rol.ADMINISTRADOR]} />}>
                 <Route path="marca" element={<ConsultarMarcas />} />
+                <Route path="envase-presentacion" element={<ConsultarEnvasesPresentacion />} />
               </Route>
 
               <Route path="linea" element={<ConsultarLinea />} />
@@ -57,8 +61,9 @@ function App() {
           </Route>
 
           {/* Otras rutas que quieras agregar */}
-        </Routes>
-      </Router>
+          </Routes>
+        </Router>
+      </NotificacionesProvider>
     </ThemeProvider>
   );
 }

@@ -195,6 +195,223 @@ Frontend:
 
 Backend: sin cambios en esta tarjeta.
 
+## [2026-09-21] PA-049 — Fondo del select de SuperLínea en admin
+
+- **Tarjeta / CR:** PA-049
+- **Herramienta:** OpenCode, openai/gpt-5.6-terra
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: en `/admin/linea`, al abrir el selector del filtro de SuperLíneas, las opciones deben
+tener un fondo visible porque actualmente se muestran sin fondo.
+
+### Respuesta / propuesta de la IA
+
+Se identificó que el filtro usa `SelectContentUI`, cuyo color temático `bg-popover` no resultaba
+visible en esta pantalla. Se propuso aplicar un fondo explícito solo a ese desplegable.
+
+### Decisión tomada
+
+Se agregaron las clases `bg-white dark:bg-slate-900` al `SelectContentUI` de
+`SuperlineaFiltro`. Así se preserva un fondo opaco y consistente en los temas claro y oscuro.
+
+### Qué se descartó y por qué
+
+- **Modificar el componente base `SelectUI`:** afectaría todos los selects del sistema cuando el
+  defecto visual solo fue reportado en el filtro de SuperLíneas.
+- **Cambiar variables globales de tema:** amplía el alcance y puede modificar popovers ajenos al
+  ticket.
+
+### Modificaciones sobre lo generado
+
+—
+
+### Impacto
+
+- Modificado: `src/componentes/gestion-producto/superlinea/componentes/superlinea-filtro.tsx`.
+- Backend, migraciones y endpoints: sin cambios.
+
+### Verificación
+
+- `yarn build`: correcto.
+- `git diff --check`: correcto.
+- `yarn lint`: sigue fallando por 21 errores preexistentes fuera de este archivo.
+- Sin verificación manual en navegador.
+
+## [2026-09-22] PA-025 — Presentación del producto y ABM de envases en frontend
+
+- **Tarjeta / CR:** PA-025 (CR-002 / US-02; consume el contrato de PA-024 del backend)
+- **Herramienta:** Claude Opus 5 vía Claude Code
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible
+
+### Prompt
+Síntesis: implementar en el frontend (1) el ABM de "Envase de presentación", como una opción
+más de Gestión Productos > Configuración junto a Marca y Líneas, con la posibilidad de crear un
+envase desde el formulario de producto; y (2) el campo Presentación (envase, valor y unidad de
+medida) debajo de los selectores de marca y línea del formulario de producto. Criterios de
+aceptación: alta y edición de producto con presentación; listados y detalle la muestran; la UI
+respeta las validaciones del contrato del backend; tests del alta y la edición. Pedido posterior:
+mostrar la presentación también en la tabla de "Cambio de precios masivo".
+
+### Respuesta / propuesta de la IA
+Relevó el front y encontró: el ABM de SuperLínea (el más reciente, con tests y sin botones de
+impresión) como patrón; `EntidadSelectorBase` como selector con búsqueda y botón "+"; un
+`presentacion-selector.tsx` y unas interfaces de presentación de la plantilla, sin uso; inputs
+numéricos con coma decimal; y que los inputs existentes leen errores con `errors[name]`, que no
+funciona con nombres anidados como `presentacion.cantidad`. Propuso copiar el patrón de
+SuperLínea para el ABM y un componente propio para la presentación, y consultó el formato
+decimal, la obligatoriedad en la edición, la presentación en el listado y el nombre de la rama.
+
+### Decisión tomada
+- **ABM de envases** (`componentes/gestion-producto/envase-presentacion/`): página, formulario
+  reutilizable, modal, tabla, tarjetas, encabezados y filtros; menú Configuración > Envases y
+  ruta `/admin/envase-presentacion` con la misma protección que Marca.
+- **Componente `PresentacionProducto`**: selector de envase (`EntidadSelectorBase`, con "+" para
+  crear un envase), valor y unidad. El valor se escribe con **punto decimal**, sin separador de
+  miles y con hasta 2 decimales, como el texto "1.5 L" de PA-023. La unidad sale de una lista
+  fija con los valores del contrato (`ml`, `L`, `g`, `kg`, `unidades`).
+- **Obligatoriedad** (igual que el backend): obligatoria en el alta y en los productos que ya
+  tienen presentación. En los productos anteriores es **opcional**, pero si se completa un campo
+  hay que completar los tres. La presentación nunca se envía como `null` y los números viajan
+  como `number`, porque el backend exige tipos estrictos.
+- **Validaciones:** el front solo exige los tres campos y su formato. Las reglas del contenido
+  (mayor a 0, decimales por unidad, máximos) las valida el backend. Sus errores
+  `PRESENTACION_INVALIDA` y `PRESENTACION_REQUERIDA` se muestran junto a la presentación, y los
+  errores de `VALIDACION_DTO` con `field: "presentacion.x"` van al campo correspondiente.
+- **Listados:** columna "Presentación" en la tabla de productos y en la de cambio de precios
+  masivo, y una línea en las tarjetas; "—" si el producto no tiene. En la edición, el formulario
+  la precarga.
+
+### Qué se descartó y por qué
+- **Copiar el ABM de Marca:** tiene botones de impresión que llaman a endpoints que no existen en
+  el backend y un manejo de errores más viejo. SuperLínea es el patrón vigente.
+- **Coma decimal, como los demás inputs:** el texto que devuelve el backend usa punto ("1.5 L") y
+  PA-023 rechaza el separador de miles; con coma, la carga y lo que se muestra no coincidirían.
+- **Presentación obligatoria en toda edición:** obligaría a completar el catálogo antes de poder
+  hacer cualquier cambio en un producto viejo; el backend tampoco lo exige.
+- **Repetir en React las reglas R1 a R4:** según el `CLAUDE.md`, las reglas de negocio viven en el
+  backend. Duplicarlas corre el riesgo de que las dos versiones diverjan.
+- **Mostrar una vista previa del texto normalizado ("1000 ml" → "1 L"):** requería copiar en el
+  front la normalización N2 del dominio.
+- **Reutilizar `presentacion-selector.tsx`:** modelaba la presentación como una entidad con id,
+  que es justo lo que PA-023 descartó; se reemplazó por `PresentacionProducto` y se borró junto
+  con sus interfaces, que no usaba nadie más.
+
+### Modificaciones sobre lo generado
+- El test del 409 mostró que `utils/errores` traduce cualquier `CONFLICTO` a "El recurso fue
+  modificado por otra operación.", que no explica una denominación repetida. En el formulario
+  de envase se muestra el mensaje del backend ("Denominación ya en uso."). `utils/errores` no se
+  tocó porque lo usan otras pantallas.
+- `armarPayloadProducto` se movió del archivo del componente a
+  `interfaces-validaciones-producto.tsx`: exportarlo desde el componente rompía el Fast Refresh.
+- El `HeaderLg` de envases incluye el botón de alta, que el de SuperLínea no tiene; en celular es
+  la única forma de crear un envase.
+- A pedido del usuario, después de su prueba manual, se agregó la presentación a la tabla de
+  cambio de precios masivo.
+
+### Impacto
+- Nuevos: `componentes/gestion-producto/envase-presentacion/` (servicio, esquema, hook, página,
+  formulario y su test, modal, tabla, tarjetas, encabezados y filtros),
+  `interfaces/gestion-producto/envase-presentacion/`,
+  `producto/componentes/configuracion/presentacion-producto.tsx`,
+  `producto/domain/presentacion-producto.ts`, `producto/componentes/datos-card.test.tsx` y
+  `menu/menuItems-definicion.test.ts`.
+- Modificados: `App.tsx`, `menuItems-definicion.ts`, `interfaces-producto.tsx`,
+  `interfaces-validaciones-producto.tsx`, `registrar-actualizar-producto.tsx` y su test,
+  `consultar-producto.tsx`, `producto/componentes/datos-card.tsx` y `cambio-precios-masivo.tsx`.
+- Borrados: `producto/componentes/configuracion/presentacion-selector.tsx` e
+  `interfaces/gestion-producto/presentacion/interfaces-presentacion.tsx`.
+- Backend: sin cambios (usa `/api/envase-presentacion` y el campo `presentacion` de PA-024).
+- **Contrato:** con esta tarjeta, el alta de productos desde la UI vuelve a funcionar; estaba
+  rota desde PA-024, que hizo obligatoria la presentación.
+
+### Verificación
+- `vitest run`: 14 archivos y 51 tests en verde (antes 11 y 35). Los 2 tests de alta que ya
+  existían se ajustaron porque ahora el alta exige presentación; los nuevos cubren el alta con y
+  sin presentación, el formato del valor, los errores del backend, la edición con y sin
+  presentación, el formulario de envase, la tarjeta del listado y el menú.
+- `tsc --noEmit -p tsconfig.app.json`: 125 errores antes y después, todos previos.
+- ESLint sobre los archivos tocados: sin errores. Quedan advertencias `exhaustive-deps` previas
+  y las de la página de envases, iguales a las de SuperLínea. Los 3 `no-empty` de
+  `consultar-producto.tsx` ya estaban.
+- `vite build`: correcto.
+- Prueba manual del usuario en su navegador, contra el backend de PA-024: alta, modificación y
+  baja de envases; alta de producto con presentación creando el envase desde el "+"; edición de
+  la presentación; edición de un producto anterior sin presentación; y presentación visible en
+  tabla y tarjetas. Las 5 pruebas pasaron.
+- **Sin verificar a mano:** la columna de presentación en cambio de precios masivo, agregada
+  después de esa prueba. Quedó cubierta por `tsc` y el build, sin test propio.
+
+## [2026-09-22] PA-025 — Auditoría de la implementación de Presentación
+
+- **Tarjeta / CR:** PA-025, CR-002, US-02
+- **Herramienta:** OpenCode, openai/gpt-5.6-terra
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Auditar el código generado en la rama para PA-025: verificar los criterios de aceptación,
+la correspondencia con el contrato backend, la calidad de la implementación y cómo probarla
+manualmente.
+
+### Respuesta / propuesta de la IA
+
+Se revisó el commit `3659052`, los flujos de alta, edición, listados y el ABM de envases,
+las pruebas del frontend y el contrato real de PA-024/PA-023 en el backend. Se propuso
+reportar los hallazgos sin modificar el comportamiento funcional durante una auditoría.
+
+### Decisión tomada
+
+Se acepta como cubierto el contrato estructural: el frontend envía
+`presentacion: { envaseId, cantidad, unidad }`, precarga la respuesta canónica del backend,
+muestra `texto` en listados y direcciona errores `PRESENTACION_INVALIDA`,
+`PRESENTACION_REQUERIDA` y `VALIDACION_DTO` al formulario. Se deja abierto un defecto de
+validación para corregir antes de considerar PA-025 plenamente aceptada.
+
+### Qué se descartó y por qué
+
+- **Dar la tarjeta por completamente aprobada:** se descartó porque `NumericFormat` trunca
+  automáticamente más de dos decimales. Por ejemplo, el usuario puede ingresar `1.255 L` y
+  la UI lo convierte a `1.25`, evitando el rechazo `PRESENTACION_INVALIDA` que el contrato
+  exige informar claramente. No es una validación, sino una modificación silenciosa del dato.
+- **Duplicar las reglas R1-R4 en React:** se descartó; el backend es la fuente de verdad para
+  las reglas de dominio. La corrección debe conservar el valor ingresado o informarle al
+  usuario el exceso de decimales, sin normalizarlo silenciosamente.
+- **Corregir el código funcional durante la auditoría:** se descartó para mantener separadas
+  la revisión y la implementación; el hallazgo queda listo para una corrección y un test de
+  regresión específicos.
+
+### Modificaciones sobre lo generado
+
+- Se agregó únicamente esta evidencia de auditoría en `DECISIONES-IA.md`.
+
+### Impacto
+
+- Hallazgo: `src/componentes/gestion-producto/producto/componentes/configuracion/presentacion-producto.tsx:73`
+  usa `decimalScale={2}`; el test actual en
+  `src/componentes/gestion-producto/producto/utils/registrar-actualizar-producto.test.tsx:254`
+  afirma el truncamiento.
+- Sin cambios en backend, endpoints, DTOs ni migraciones.
+
+### Verificación
+
+- Contrato contrastado con
+  `cwtech-proyecto1-backend/src/modules/gestion-productos/producto/dto/presentacion.dto.ts`
+  y `domain/value-objects/medida.vo.ts`: `L` y `kg` admiten como máximo dos decimales;
+  `ml`, `g` y `unidades` no admiten decimales.
+- Pruebas focalizadas: 4 archivos, 18 tests en verde (`registrar-actualizar-producto`,
+  `datos-card`, formulario de envase y menú).
+- `yarn build`: correcto.
+- `yarn test`: no queda completamente verde por 4 fallos preexistentes en
+  `src/utils/PrivateRoute.test.tsx`; el entorno no inicializa `localStorage` y falla antes de
+  ejecutar sus aserciones. Las 47 pruebas restantes pasan.
+- Sin prueba manual nueva contra el backend en esta auditoría; se debe ejecutar el caso de
+  más de dos decimales al corregir el defecto.
+
 ## [2026-09-23] PA-020 — Filtro "Exacto" de producto: booleanos de query, búsqueda rápida solo por código y filtro lateral acumulable
 
 - **Tarjeta / CR:** PA-020 (rama `Pa-020-Testing`); hallazgos 6 y 7 del informe de testing del equipo
