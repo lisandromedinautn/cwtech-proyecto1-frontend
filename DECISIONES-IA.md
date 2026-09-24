@@ -877,3 +877,47 @@ del equipo para ese merge.
 
   Después de la prueba se restauró el producto 7 en la base local.
 - **Sin verificar:** la UI en el navegador.
+
+## [2026-09-24] Revisión de deudas técnicas del front
+
+- **Tarjeta / CR:** ninguna propia; revisión de deuda técnica
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: revisar si las deudas documentadas siguen activas comprobándolas en el código, no en
+este archivo, y registrar nuevas deudas.
+
+### Estado de las deudas ya registradas (comprobado en el código de `develop`)
+
+- **Activa:** paginación en `consultar-producto.tsx` tras una búsqueda rápida. Desde una página
+  mayor a 1, `resetearPaginacion()` cambia `paginaActual` y el effect de paginación dispara
+  `handleBuscarProductos()` (búsqueda normal). Esa búsqueda toma un `requestId` nuevo y descarta la
+  respuesta de la rápida: se ven los resultados de la búsqueda normal. La rápida sigue mandando el
+  `skip` anterior, paginar en modo rápido pierde el código y el spinner sigue desmontando el input.
+- **Activa, y alcanzable:** los 8 TS2304 siguen (`tsc`: 125 errores). `ConsultarMovimientosCuenta`
+  **sí se ejecuta**: el botón "Movimientos" de `proveedor-card.tsx` (vista mobile) abre ese modal y
+  la pantalla tira `ReferenceError`. Los 7 de `sidebarFiltros.tsx` están detrás de filtros que
+  ninguna pantalla activa.
+- **Activa:** la vista agrupada por SuperLínea no existe en el front, aunque el endpoint está.
+- **Código muerto:** `busqueda-producto.tsx` apunta a `search-productos-by-rapido` de módulos que el
+  back no tiene, pero solo lo importan `seleccion-producto*.tsx`, que nadie importa.
+
+### Deuda técnica detectada y no resuelta
+
+- **Testing e2e.** No hay e2e (Playwright, Cypress o similar). Los bugs de imports perdidos de
+  `PrivateRoute` y `textoPresentacion` y el de la paginación no los detecta ningún test, porque
+  ninguno monta `ConsultarProductos` en un navegador real.
+- **Recuperar un producto borrado.** La pantalla muestra los eliminados (`mostrarEliminados`), pero
+  no ofrece restaurarlos. Depende de un endpoint que el back tampoco tiene.
+- **Las notificaciones no se borran con "Limpiar".** Reportado por el equipo. `limpiarNotificaciones`
+  vacía el estado del context, pero las alertas de stock crítico se vuelven a generar desde
+  `consultar-producto.tsx` (`mostrarAlertasStockCritico`). Su guarda
+  (`notificadosStockCriticoRef`) se reinicia cada vez que la pantalla se monta, y las
+  notificaciones no se persisten. Causa probable, sin verificar en el navegador.
+- **Desfasaje en la vista mobile.** Reportado por el equipo, sin detalle todavía: la vista mobile
+  (cards, `lg:hidden`) no se comporta igual que la de escritorio (tabla). Ejemplo ya comprobado: el
+  botón "Movimientos" de proveedor existe solo en mobile y rompe la pantalla. Falta relevar el resto
+  de las diferencias.
