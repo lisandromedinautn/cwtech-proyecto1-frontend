@@ -35,4 +35,31 @@ describe("ProductoActions", () => {
 
     expect(screen.queryByRole("button", { name: "Historial de precios" })).not.toBeInTheDocument();
   });
+
+  it("ofrece todas las acciones para un producto activo", () => {
+    render(<ProductoActions producto={producto} {...acciones()} onHistorial={vi.fn()} />);
+
+    expect(screen.getAllByRole("button").map((boton) => boton.getAttribute("title"))).toEqual([
+      "Ver información",
+      "Historial de precios",
+      "Ajustar stock",
+      "Editar producto",
+      "Eliminar producto",
+    ]);
+  });
+
+  it("para un producto eliminado solo deja ver su información", async () => {
+    const user = userEvent.setup();
+    const handlers = acciones();
+
+    render(
+      <ProductoActions producto={{ ...producto, eliminado: true }} {...handlers} onHistorial={vi.fn()} />,
+    );
+
+    expect(screen.getAllByRole("button").map((boton) => boton.getAttribute("title"))).toEqual([
+      "Ver información",
+    ]);
+    await user.click(screen.getByRole("button", { name: "Ver información" }));
+    expect(handlers.onInfo).toHaveBeenCalledWith(7);
+  });
 });
