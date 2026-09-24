@@ -1,0 +1,42 @@
+97690e8 Merge pull request #26 from lisandromedinautn/unificacion-testing-PA-053-PA-055
+f93cc8a docs(ia): registro la unificación de testing, PA-053 y PA-055
+64f2e58 Merge branch 'PA-055-Comprobar-soft-delete-de-la-lista-de-productos' into unificacion-testing-PA-053-PA-055
+e7af842 Merge branch 'PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto' into unificacion-testing-PA-053-PA-055
+23ba174 Merge branch 'Pa-020-Testing' into unificacion-testing-PA-053-PA-055
+80a9e5c Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+fc5bf23 Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+f6ec285 docs(ia): registro la decisión de PA-055
+9b1be48 docs(ia): registro la decisión de PA-053
+ef0b248 Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+5cdcc54 Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+8b20130 fix(productos): restauro el import de textoPresentacion en el listado
+ded5f50 Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+b32bf91 Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+027825b fix(auth): restauro el import de useConfirmation en PrivateRoute
+f808078 Merge branch 'develop' into Pa-020-Testing
+b0c058d Merge pull request #25 from lisandromedinautn/PA-051-Implementar-bajoMinimo
+3b8dd1b Merge branch 'develop' into PA-051-Implementar-bajoMinimo
+0427ce2 feat/PA-051-implementacion-bajoMinimo
+a35d1be PA-020 — Corregir filtro exacto de productos
+9e263f1 Merge pull request #23 from lisandromedinautn/PA-025-Incorporar-Presentacion-en-frontend-CR-002
+5b1397f PA-049: corrijo el fondo del select de SuperLínea
+b977394 Merge branch 'develop' into PA-021-—-Revisar-configuración-y-filtros-frontend
+737a373 Merge branch 'develop' into bugfix/PA-049-fix-background-color-select-admin-super-linea
+7adfaff PA-050: añado columna SuperLínea en admin de líneas
+94c5504 PA-028 — Incorporar SuperLínea en frontend (CR-003)
+9ec792f feat(superlinea): incorporar SuperLínea en frontend
+222ee12 PA-021 — Revisar configuración y filtros frontend
+d1e365c PA-048 —  Refactor UI más intuitiva actualización masiva precios
+b4e08d2 Merge pull request #13 from lisandromedinautn/PA-019-Mostrar-historial-de-precios-frontend
+5cbda1a PA-013 — Alinear validaciones y errores en frontend
+bc5805d Merge pull request #11 from lisandromedinautn/PA-016-implementar-actualizacion-masiva-de-precios-backend
+e728f9c PA-047 —  Frontend para dirigirse a la actualización masiva de precios
+3b4d2e9 Merge pull request #10 from lisandromedinautn/PA-016-implementar-actualizacion-masiva-de-precios-backend
+27a17f7 feat:PA-016-Actualización masiva de precio
+5f5d55a PA-020 — Corregir PrivateRoute y sesión frontend
+ab7e975 PA-007 — Implementar flujo de ajuste de stock en frontend
+cd7e7a7 PA-015 — Corregir filtro por proveedor
+9966397 PA-011 — Definir matriz común de validaciones
+bc47d7d PA-003: Adaptar frontend a la política de precio
+94aad66 PA-020 — Corregir PrivateRoute y sesión frontend
+789fc9c fix(validaciones): acotar CUIT de Cliente/Proveedor a 11 digitos

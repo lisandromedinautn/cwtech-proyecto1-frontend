@@ -1,0 +1,6 @@
+Merge pull request #26 from lisandromedinautn/unificacion-testing-PA-053-PA-055
+Merge pull request #25 from lisandromedinautn/PA-051-Implementar-bajoMinimo
+Merge pull request #23 from lisandromedinautn/PA-025-Incorporar-Presentacion-en-frontend-CR-002
+Merge pull request #13 from lisandromedinautn/PA-019-Mostrar-historial-de-precios-frontend
+Merge pull request #11 from lisandromedinautn/PA-016-implementar-actualizacion-masiva-de-precios-backend
+Merge pull request #10 from lisandromedinautn/PA-016-implementar-actualizacion-masiva-de-precios-backend

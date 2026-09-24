@@ -1,0 +1,91 @@
+97690e8 | 2026-09-24 | lisandromedina | Merge pull request #26 from lisandromedinautn/unificacion-testing-PA-053-PA-055
+f93cc8a | 2026-09-24 | PIPICBA | docs(ia): registro la unificación de testing, PA-053 y PA-055
+64f2e58 | 2026-09-23 | PIPICBA | Merge branch 'PA-055-Comprobar-soft-delete-de-la-lista-de-productos' into unificacion-testing-PA-053-PA-055
+e7af842 | 2026-09-23 | PIPICBA | Merge branch 'PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto' into unificacion-testing-PA-053-PA-055
+23ba174 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into unificacion-testing-PA-053-PA-055
+80a9e5c | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+fc5bf23 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+26124b1 | 2026-09-23 | PIPICBA | docs(ia): registro el import perdido de textoPresentacion
+f6ec285 | 2026-09-23 | PIPICBA | docs(ia): registro la decisión de PA-055
+9b1be48 | 2026-09-23 | PIPICBA | docs(ia): registro la decisión de PA-053
+9c5636d | 2026-09-23 | PIPICBA | test(productos): cubro la vista de productos eliminados
+75d1a4b | 2026-09-23 | PIPICBA | feat(auditoria): muestro quién eliminó el registro en lugar de la actualización
+5df04bf | 2026-09-23 | PIPICBA | feat(productos): permito mostrar los productos eliminados
+15cba45 | 2026-09-23 | PIPICBA | fix(productos): evito que el aviso del borrado desaparezca al instante
+d3e8b00 | 2026-09-23 | PIPICBA | fix(auditoria): muestro la modificación solo si realmente la hubo
+eafe911 | 2026-09-23 | PIPICBA | feat(productos): muestro el responsable en el historial de precios
+ef0b248 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+5cdcc54 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+8b20130 | 2026-09-23 | PIPICBA | fix(productos): restauro el import de textoPresentacion en el listado
+ded5f50 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+b32bf91 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+7d9f2dd | 2026-09-23 | PIPICBA | docs(ia): registro la integración de develop y main en testing
+027825b | 2026-09-23 | PIPICBA | fix(auth): restauro el import de useConfirmation en PrivateRoute
+aeeb277 | 2026-09-23 | PIPICBA | Merge branch 'main' into Pa-020-Testing
+f808078 | 2026-09-23 | PIPICBA | Merge branch 'develop' into Pa-020-Testing
+b0c058d | 2026-09-23 | Marti | Merge pull request #25 from lisandromedinautn/PA-051-Implementar-bajoMinimo
+3b8dd1b | 2026-09-23 | Marti | Merge branch 'develop' into PA-051-Implementar-bajoMinimo
+46cf6bd | 2026-09-23 | Martina Pineda | Actualizo duración de la notificacion
+0427ce2 | 2026-09-23 | Martina Pineda | feat/PA-051-implementacion-bajoMinimo
+a35d1be | 2026-09-23 | PIPICBA | PA-020 — Corregir filtro exacto de productos
+115bff5 | 2026-09-23 | PIPICBA | docs(ia): registro la decisión del filtro exacto de productos
+6c1e4cc | 2026-09-23 | PIPICBA | fix(productos): evito que la búsqueda quede cargando ante un error
+de7deab | 2026-09-22 | PIPICBA | chore: actualizo yarn.lock
+8043db2 | 2026-09-22 | PIPICBA | chore: ignoro package-lock.json
+a315d9e | 2026-09-22 | Julian Fermani | Release 22/09/2026
+9e263f1 | 2026-09-22 | UlisesFrancioni | Merge pull request #23 from lisandromedinautn/PA-025-Incorporar-Presentacion-en-frontend-CR-002
+f4fa904 | 2026-09-22 | Julian | fix(productos): tabla ahora la puedo ver en mi compu
+3659052 | 2026-09-22 | UlisesFrancioni | feat: Presentacion ABM y en producto
+60637c7 | 2026-09-21 | Julian Fermani | Release 21/09/2026
+01d7b2b | 2026-09-21 | Julian Fermani | Merge branch 'main' into develop
+5b1397f | 2026-09-21 | Ramiro Doglio | PA-049: corrijo el fondo del select de SuperLínea
+b977394 | 2026-09-21 | Ramiro Doglio | Merge branch 'develop' into PA-021-—-Revisar-configuración-y-filtros-frontend
+737a373 | 2026-09-21 | Julian Fermani | Merge branch 'develop' into bugfix/PA-049-fix-background-color-select-admin-super-linea
+7adfaff | 2026-09-21 | Julian Fermani | PA-050: añado columna SuperLínea en admin de líneas
+33274b1 | 2026-09-21 | Julian | fix(superlinea): agrego fondo al select
+efed8b1 | 2026-09-21 | Julian | feat(lineas): agrego columna de SuperLínea
+d1f902b | 2026-09-21 | Julian | Merge branch 'develop' of github.com:lisandromedinautn/cwtech-proyecto0-frontend into develop
+dfe3c22 | 2026-09-21 | Julian | hotfix(logo): logo CWTECH para todo el front
+455a4ec | 2026-09-21 | Ignacio Fumero Zamudio | Pa-020-Testing
+fdb5d06 | 2026-09-21 | Ignacio Fumero Zamudio | Pa-020-Testing
+94c5504 | 2026-09-21 | Julian Fermani | PA-028 — Incorporar SuperLínea en frontend (CR-003)
+9ec792f | 2026-09-21 | RamaDoglio | feat(superlinea): incorporar SuperLínea en frontend
+222ee12 | 2026-09-18 | Ignacio Fumero Zamudio | PA-021 — Revisar configuración y filtros frontend
+d1e365c | 2026-09-18 | Julian Fermani | PA-048 —  Refactor UI más intuitiva actualización masiva precios
+033c260 | 2026-09-18 | Julian | feat(precios): exijo previsualización antes de guardar
+b4e08d2 | 2026-09-18 | UlisesFrancioni | Merge pull request #13 from lisandromedinautn/PA-019-Mostrar-historial-de-precios-frontend
+50981ba | 2026-09-18 | UlisesFrancioni | feat: consulta historial de precios de un producto
+0d4210f | 2026-09-17 | Julian | feat(core): nombre del equipo + logo
+1ec23a8 | 2026-09-17 | Julian | chore(docs): elimino entrada innecesaria
+c3e58b2 | 2026-09-17 | Julian | feat(precios): reorganizo actualización masiva de precios
+5cbda1a | 2026-09-17 | Julian Fermani | PA-013 — Alinear validaciones y errores en frontend
+bc5805d | 2026-09-17 | Marti | Merge pull request #11 from lisandromedinautn/PA-016-implementar-actualizacion-masiva-de-precios-backend
+e728f9c | 2026-09-17 | Martina Pineda | PA-047 —  Frontend para dirigirse a la actualización masiva de precios
+0842ad1 | 2026-09-16 | Julian | test(productos): corrijo el mock del formulario
+da9bbf8 | 2026-09-16 | Julian | test(errores): verifico feedback del backend
+4a9613a | 2026-09-16 | Julian | feat(formularios): alineo feedback de API
+2e35862 | 2026-09-16 | Julian | feat(errores): normalizo errores HTTP
+3b4d2e9 | 2026-09-16 | Marti | Merge pull request #10 from lisandromedinautn/PA-016-implementar-actualizacion-masiva-de-precios-backend
+27a17f7 | 2026-09-16 | Martina Pineda | feat:PA-016-Actualización masiva de precio
+6c0684f | 2026-09-16 | Martina Pineda | cambios en la tabla
+d2a4519 | 2026-09-15 | PIPICBA | docs: agregar guía de trazabilidad para agentes IA (CLAUDE.md + DECISIONES-IA.md)
+00875b7 | 2026-09-14 | Julian Fermani | Release 12/09/2026
+5f5d55a | 2026-09-14 | Ignacio Fumero Zamudio | PA-020 — Corregir PrivateRoute y sesión frontend
+ab7e975 | 2026-09-14 | Julian Fermani | PA-007 — Implementar flujo de ajuste de stock en frontend
+d3996b1 | 2026-09-14 | Julian | feat(stock): implemento el flujo de ajuste manual
+cd7e7a7 | 2026-09-14 | Julian Fermani | PA-015 — Corregir filtro por proveedor
+9966397 | 2026-09-14 | Julian Fermani | PA-011 — Definir matriz común de validaciones
+9898c80 | 2026-09-13 | Martina | feat:pa-015-filtro-proveedor
+187ed9f | 2026-09-12 | Julian | chore: ignoro mis carpetas de opencode
+f0e1ef6 | 2026-09-12 | Julian Fermani | Release: actualizar main desde develop (12/09/2026)
+bc47d7d | 2026-09-11 | Julian Fermani | PA-003: Adaptar frontend a la política de precio
+0f737e4 | 2026-09-11 | Julian | test(producto): cubro flujo de precio derivado
+af62d17 | 2026-09-11 | Julian | feat(producto): adapto formulario a política de precio
+94aad66 | 2026-09-10 | Ignacio Fumero Zamudio | PA-020 — Corregir PrivateRoute y sesión frontend
+789fc9c | 2026-09-08 | alex | fix(validaciones): acotar CUIT de Cliente/Proveedor a 11 digitos
+1519448 | 2026-09-07 | Julian Fermani | test: configuro baseline de tests frontend
+cdb2597 | 2026-09-07 | Julian | test: configuro baseline de tests frontend
+b7ae649 | 2026-08-29 | Julian | docs: agrego informacion inicial del sistema
+63d57ab | 2026-08-29 | alex | fix: Fix de README.md
+e909f05 | 2026-08-24 | utnfrvmtrabajo-collab | Update README.md
+02d36a5 | 2026-08-24 | utnfrvmtrabajo-collab | inicial

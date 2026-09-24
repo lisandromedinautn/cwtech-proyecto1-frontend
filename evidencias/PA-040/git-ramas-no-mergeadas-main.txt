@@ -1,0 +1,6 @@
+  develop
+  remotes/origin/PA-021-—-Revisar-configuración-y-filtros-frontend
+  remotes/origin/PA-051-Implementar-bajoMinimo
+  remotes/origin/Pa-020-Testing
+  remotes/origin/develop
+  remotes/origin/unificacion-testing-PA-053-PA-055
