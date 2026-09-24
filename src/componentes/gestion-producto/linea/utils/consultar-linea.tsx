@@ -18,6 +18,7 @@ import { DatosCards } from "../componentes/datos-card";
 import { Header } from "../componentes/header";
 import { HeaderLg } from "../componentes/header-lg";
 import { FiltrosLinea, FiltrosLineaValues } from "../componentes/filtros-linea";
+import SuperlineaFiltro from "../../superlinea/componentes/superlinea-filtro";
 import { getUsuarioId } from "../../../../utils/auth";
 
 const NOMBRE_COMPONENTE = "consultar-linea";
@@ -39,7 +40,9 @@ export default function ConsultarLineas() {
   // ===========================
   // FILTROS LOCALES
   // ===========================
-  const [filtrosLinea, setFiltrosLinea] = useState<FiltrosLineaValues>({ denominacion: "" });
+  const [filtrosLinea, setFiltrosLinea] = useState<FiltrosLineaValues>({
+    denominacion: "",
+  });
 
   // ===========================
   // PAGINACIÓN
@@ -111,7 +114,8 @@ export default function ConsultarLineas() {
       addAlert({
         type: TipoAlerta.ERROR,
         title: TituloAlerta.ERROR,
-        message: "No se puede eliminar este elemento porque está siendo utilizada por uno o más productos.",
+        message:
+          "No se puede eliminar este elemento porque está siendo utilizada por uno o más productos.",
         autoClose: true,
       });
     }
@@ -131,6 +135,7 @@ export default function ConsultarLineas() {
     const filtrosConPaginacion = {
       denominacion: filtrosLinea.denominacion,
       ...(filtrosLinea.incluirEliminados ? { incluirEliminados: true } : {}),
+      ...(filtrosLinea.superlineaId ? { superlineaId: filtrosLinea.superlineaId } : {}),
       skip,
       take,
     };
@@ -143,7 +148,12 @@ export default function ConsultarLineas() {
   };
 
   const handleBuscarDesdeFiltro = (filtros: FiltrosLineaValues) => {
-    setFiltrosLinea(filtros);
+    // Merge con el estado actual para no perder superlineaId al buscar por denominación
+    setFiltrosLinea((prev) => ({ ...prev, ...filtros }));
+  };
+
+  const handleSuperlineaChange = (superlineaId?: number) => {
+    setFiltrosLinea((prev) => ({ ...prev, superlineaId }));
   };
 
   useEffect(() => {
@@ -232,6 +242,15 @@ export default function ConsultarLineas() {
           </CardHeader>
 
           <CardContent className="p-0">
+            <div className="p-4 border-b bg-gray-50 dark:bg-slate-800">
+              <div className="max-w-xs">
+                <SuperlineaFiltro
+                  value={filtrosLinea.superlineaId}
+                  onChange={handleSuperlineaChange}
+                />
+              </div>
+            </div>
+
             <FiltrosLinea onBuscar={handleBuscarDesdeFiltro} mostrarIncluirEliminados />
 
             {loading ? (

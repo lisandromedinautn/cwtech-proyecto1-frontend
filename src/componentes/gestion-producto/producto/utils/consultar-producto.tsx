@@ -33,7 +33,11 @@ import { ProductoNotificacion, EntidadTipo } from "../../../NotificacionModal/in
 import { getAuthData, getRoles, getUsuarioId } from "../../../../utils/auth";
 import { puedeHacerAcciones } from "../domain/permisos-producto";
 import ProveedorService from "../../../gestion-organizacion/proveedor/services/proveedor-service";
+import SuperlineaService from "../../superlinea/services/superlinea-service";
 import { getApiErrorCategory, getApiErrorMessage, normalizeApiError } from "../../../../utils/errores";
+import { textoPresentacion } from "../domain/presentacion-producto";
+import { EliminadoBadge } from "../componentes/eliminado-badge";
+import { useNotificaciones } from "../../../../context/notificaciones-context";
 
 
 export default function ConsultarProductos() {
@@ -54,29 +58,25 @@ export default function ConsultarProductos() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalAbierto, setModalAbierto] = useState<boolean>(false);
   const [productoNotificacionSeleccionado, setProductoNotificacionSeleccionado] = useState<ProductoNotificacion | null>(null);
+  const notificadosStockCriticoRef = useRef<Set<number>>(new Set());
   const usuarioId = getUsuarioId();
   const { configuracion } = useConfiguracionSistema();
   const [codigo, setCodigo] = useState<string>("");
   const [exacto, setExacto] = useState<boolean>(true);
+  const [mostrarEliminados, setMostrarEliminados] = useState<boolean>(false);
   const [auditoria, setAuditoria] = useState<Auditoria>({} as Auditoria);
   const isMounted = useRef(false);
   const inicializacionCompleta = useRef(false);
+  const busquedaRequestId = useRef(0);
   const { empresaId } = getAuthData();
-  
-   // =========================
-    // PAGINACIÓN
-    // =========================
-    const {
-      paginaActual,
-      entidadesTotales,
-      skip,
-      take,
-      setEntidadesTotales,
-      handlePageChange,
-      resetearPaginacion,
-    } = usePaginacion(PAGINACION.TAKE_DEFAULT);
 
-    // MANEJO DE FILTROS ========================================================
+  // =========================
+  // PAGINACIÓN
+  // =========================
+  const { paginaActual, entidadesTotales, skip, take, setEntidadesTotales, handlePageChange, resetearPaginacion } =
+    usePaginacion(PAGINACION.TAKE_DEFAULT);
+
+  // MANEJO DE FILTROS ========================================================
   const [filtrosInicializados, setFiltrosInicializados] = useState(false);
   const {
     setFiltrosNecesarios,
@@ -86,16 +86,26 @@ export default function ConsultarProductos() {
     limpiarFiltros,
     buscar,
     setBuscar,
+    busquedaRapida,
     setBusquedaRapida,
+    buscarSuperlineas,
   } = useFiltrosContext();
 
   const filtrosInicialesConsultarProducto = useFiltrosIniciales("consultar-producto");
+
+  // =========================
+  // ALERTAS / CONFIRMACIONES
+  // =========================
+  const { alerts, addAlert, removeAlert } = useAlerts();
+  const { agregarNotificacion } = useNotificaciones();
+  const { showConfirmation, AlertasConfirmacion } = useConfirmation();
 
     // Contexto de catálogos
   const {
     setLineas,
     setMarcas,
     setProveedores,
+    setSuperlineas,
   } = useCatalogosContext();
   
   // Setear qué filtros mostrar en la sidebar
@@ -106,6 +116,7 @@ export default function ConsultarProductos() {
       denominacion: true,
       codigoProveedor: true,
       linea: true,
+      superlinea: true,
       marca: true,
       proveedor: true,
       conStock: true,
@@ -119,6 +130,7 @@ export default function ConsultarProductos() {
 
   useEffect(() => {
     if (!inicializacionCompleta.current) return;
+    if (!codigo.trim()) return;
     const timer = setTimeout(() => {
       handleBuscarProductosRapido();
     }, 400);
@@ -126,28 +138,67 @@ export default function ConsultarProductos() {
   }, [codigo, exacto]);
 
   useEffect(() => {
+    if (!inicializacionCompleta.current) return;
+    if (busquedaRapida) {
+      handleBuscarProductosRapido(true);
+    } else {
+      handleBuscarProductos(true);
+    }
+  }, [mostrarEliminados]);
+
+  useEffect(() => {
     if (buscar.cont > 0 && buscar.componente === "consultar-producto") {
       handleBuscarProductos(true);
     }
   }, [buscar]);
 
+  const mostrarAlertasStockCritico = (items: ConsultarProducto[]) => {
+    const productosEnAlerta = items.filter((producto) => {
+      const productoConStockMinimo = producto as ConsultarProducto & {
+        stockMinimo?: number;
+        utilizaStockMinimo?: boolean;
+      };
+
+      const stock = Number(producto.stock ?? 0);
+      const stockMinimo = Number(productoConStockMinimo.stockMinimo ?? 0);
+      const utilizaStockMinimo = Boolean(productoConStockMinimo.utilizaStockMinimo ?? false);
+
+      return utilizaStockMinimo && stock <= stockMinimo;
+    });
+
+    productosEnAlerta.forEach((producto) => {
+      const id = Number(producto.id);
+      if (notificadosStockCriticoRef.current.has(id)) return;
+
+      notificadosStockCriticoRef.current.add(id);
+      agregarNotificacion({
+        id: `stock-critico-${id}`,
+        title: "Stock crítico",
+        message: `El producto ${producto.denominacion} se encuentra bajo el stock crítico.`,
+        type: "warning",
+      });
+      addAlert({
+        type: TipoAlerta.WARNING,
+        title: "Stock crítico",
+        message: `El producto ${producto.denominacion} se encuentra bajo el stock crítico.`,
+        autoClose: true,
+        duration: 3000,
+      });
+    });
+  };
+
+  useEffect(() => {
+    mostrarAlertasStockCritico(productos);
+  }, [productos, agregarNotificacion]);
+
   // MANEJO DE FILTROS ========================================================
 
 
 
-    // =========================
-  // ALERTAS / CONFIRMACIONES
   // =========================
-  const { alerts, addAlert, removeAlert } = useAlerts();
-  const { showConfirmation, AlertasConfirmacion } = useConfirmation();
-  
+  // IMPRESIÓN
   // =========================
-    // IMPRESIÓN
-    // =========================
-    const {
-      handleImprimirTodo,
-      handleImprimirPagina,
-    } = useProductoImpresion();
+  const { handleImprimirTodo, handleImprimirPagina } = useProductoImpresion();
 
   const fetchLineas = async () => {
     setError(null);
@@ -156,7 +207,7 @@ export default function ConsultarProductos() {
       if (valoresFiltros.denominacionLinea && valoresFiltros.denominacionLinea.length >= caracteresParaBusqueda) {
         const lineasTotales = await ProductoService.obtenerTotales(
           { denominacion: valoresFiltros.denominacionLinea || " " },
-          "lineas"
+          "lineas",
         );
         setLineas(lineasTotales.data);
       }
@@ -170,6 +221,26 @@ export default function ConsultarProductos() {
     fetchLineas();
   }, [valoresFiltros.denominacionLinea]);
 
+  const fetchSuperlineas = async () => {
+    const denominacion = valoresFiltros.denominacionSuperlinea?.trim();
+    if (!denominacion) {
+      setSuperlineas([]);
+      return;
+    }
+
+    try {
+      const response = await SuperlineaService.obtener({ denominacion, skip: 0, take: 10 });
+      setSuperlineas(response.data);
+    } catch (err: unknown) {
+      console.error("Error al obtener SuperLíneas:", err);
+      setError("No se pudieron cargar las SuperLíneas.");
+    }
+  };
+
+  useEffect(() => {
+    if (buscarSuperlineas > 0) fetchSuperlineas();
+  }, [buscarSuperlineas]);
+
   const fetchMarcas = async () => {
     setError(null);
     try {
@@ -178,7 +249,7 @@ export default function ConsultarProductos() {
       if (valoresFiltros.denominacionMarca && valoresFiltros.denominacionMarca.length >= caracteresParaBusqueda) {
         const marcasTotales = await ProductoService.obtenerTotales(
           { denominacion: valoresFiltros.denominacionMarca || " " },
-          "marcas"
+          "marcas",
         );
         setMarcas(marcasTotales.data);
       }
@@ -270,7 +341,8 @@ export default function ConsultarProductos() {
     const confirmed = await showConfirmation({
       type: TipoAlertaConfirmacion.DESTRUCTIVE,
       title: TituloAlertaConfirmacion.DESTRUCTIVE,
-      message: "¿Estás seguro de que quieres eliminar este elemento? Esta acción no se puede deshacer.",
+      message:
+        "¿Querés eliminar este producto? Dejará de aparecer en el listado; podés volver a verlo activando \"Mostrar eliminados\".",
       confirmText: "Eliminar",
       cancelText: "Cancelar",
       onConfirm: () => {},
@@ -281,7 +353,11 @@ export default function ConsultarProductos() {
     let response: ResponsePost;
     try {
       response = await ProductoService.eliminar(id, usuarioId);
-      setProductos(productos.filter((producto) => producto.id !== id));
+      setProductos(
+        mostrarEliminados
+          ? productos.map((producto) => (producto.id === id ? { ...producto, eliminado: true } : producto))
+          : productos.filter((producto) => producto.id !== id),
+      );
       addAlert({
         type: TipoAlerta.SUCCESS,
         title: TituloAlerta.SUCCESS,
@@ -393,27 +469,7 @@ export default function ConsultarProductos() {
       duration: 3000,
     });
 
-    setLoading(true);
-
-    const filtrosConPaginacion = {
-      denominacion: valoresFiltros.denominacion,
-      codigoProveedor: valoresFiltros.codigoProveedor,
-      codigoReferencia: valoresFiltros.codigoReferencia,
-      lineaId: valoresFiltros.lineaId,
-      marcaId: valoresFiltros.marcaId,
-      proveedorId: valoresFiltros.proveedorId,
-      conStock: valoresFiltros.conStock,
-      codReferenciaExacto: valoresFiltros.codReferenciaExacto,
-      codProveedorExacto: valoresFiltros.codProveedorExacto,
-      skip: skip,
-      take: take,
-    };
-
-    const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
-
-    setEntidadesTotales(productosFiltrados.total);
-    setProductos(productosFiltrados.data);
-    setLoading(false);
+    await handleBuscarProductos();
   };
 
   const handleActualizarSuccess = async (mensajeAlerta: string) => {
@@ -434,33 +490,48 @@ export default function ConsultarProductos() {
 
   const handleBuscarProductos = async (botonBuscar?: boolean) => {
     setBusquedaRapida(false);
+    const requestId = ++busquedaRequestId.current;
     if (botonBuscar) {
       resetearPaginacion();
     }
     setLoading(true);
 
-    const filtrosConPaginacion = {
-      denominacion: valoresFiltros.denominacion,
-      codigoProveedor: valoresFiltros.codigoProveedor,
-      codigoReferencia: valoresFiltros.codigoReferencia,
-      codProveedorExacto: valoresFiltros.codProveedorExacto,
-      codReferenciaExacto: valoresFiltros.codReferenciaExacto,
-      lineaId: valoresFiltros.lineaId,
-      marcaId: valoresFiltros.marcaId,
-      proveedorId: valoresFiltros.proveedorId,
-      conStock: valoresFiltros.conStock,
-      skip: skip,
-      take: take,
-    };
+    try {
+      const productosFiltrados = await ProductoService.buscarPorFiltros({
+        denominacion: valoresFiltros.denominacion,
+        linea: valoresFiltros.denominacionLinea,
+        superlinea: valoresFiltros.denominacionSuperlinea,
+        incluirEliminados: mostrarEliminados,
+        skip: botonBuscar ? 0 : skip,
+        take,
+      });
+      if (requestId !== busquedaRequestId.current) return;
+      setProductos(productosFiltrados.data);
+      setEntidadesTotales(productosFiltrados.total);
+    } catch (err: unknown) {
+      if (requestId !== busquedaRequestId.current) return;
+      notificarErrorBusqueda(err);
+    } finally {
+      if (requestId === busquedaRequestId.current) setLoading(false);
+    }
+  };
 
-    const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
-    setProductos(productosFiltrados.data);
-    setEntidadesTotales(productosFiltrados.total);
-    setLoading(false);
+  const notificarErrorBusqueda = (err: unknown) => {
+    setProductos([]);
+    setEntidadesTotales(0);
+    addAlert({
+      type: TipoAlerta.ERROR,
+      title: TituloAlerta.ERROR,
+      message: getApiErrorMessage(normalizeApiError(err)),
+      autoClose: true,
+      duration: 3000,
+    });
   };
 
   const handleBuscarProductosRapido = async (botonBuscar?: boolean) => {
+    if (!codigo.trim()) return;
     setBusquedaRapida(true);
+    const requestId = ++busquedaRequestId.current;
     if (botonBuscar) {
       resetearPaginacion();
     }
@@ -469,14 +540,21 @@ export default function ConsultarProductos() {
     const filtrosConPaginacion = {
       codigo: codigo,
       exacto: exacto,
+      incluirEliminados: mostrarEliminados,
       skip: skip,
       take: take,
     };
 
-    const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
-    setProductos(productosFiltrados.data);
-    setEntidadesTotales(productosFiltrados.total);
-    setLoading(false);
+    try {
+      const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
+      if (requestId !== busquedaRequestId.current) return;
+      setProductos(productosFiltrados.data);
+      setEntidadesTotales(productosFiltrados.total);
+    } catch (err: unknown) {
+      notificarErrorBusqueda(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // MANEJO DE PAGINACION ===========================================
@@ -493,7 +571,7 @@ export default function ConsultarProductos() {
     {
       header: "Cód.",
       accessor: "codigoProveedor",
-      flex: 0.3,
+      flex: 0.27,
       type: "text",
       align: "right",
       editable: false,
@@ -502,7 +580,7 @@ export default function ConsultarProductos() {
     {
       header: "Denominación",
       accessor: "denominacion",
-      flex: 2,
+      flex: 0.8,
       type: "text",
       editable: false,
       formatFunction: ({ value, row }) => (
@@ -513,6 +591,7 @@ export default function ConsultarProductos() {
           >
             <Star size={16} className={row.esAlternativo ? "text-red-500 shrink-0" : "text-yellow-500 shrink-0"} />
             <span>{value}</span>
+            {row.eliminado && <EliminadoBadge />}
           </div>
           {row.observacion && <div className="text-sm text-gray-500 truncate max-w-[700px]">{row.observacion}</div>}
         </div>
@@ -520,14 +599,23 @@ export default function ConsultarProductos() {
       scrollable: false,
     },
     {
-      header: "Precio", 
-      accessor:"precio",
-      flex:0.3,
-      type:"text", 
-      editable:false,
-      align:"left", 
-      formatFunction: ({ value }) => <span>${formatPrice(value)}</span>,
-    }
+      header: "Presentación",
+      accessor: "presentacion",
+      flex: 0.6,
+      type: "text",
+      editable: false,
+      formatFunction: ({ value }) => <span>{textoPresentacion(value)}</span>,
+    },
+    {
+      header: "Precio",
+      accessor: "precio",
+      flex: 0.3,
+      type: "text",
+      editable: false,
+      align: "left",
+      autoHeight: true,
+      formatFunction: ({ value }) => <span className="break-all">${formatPrice(value)}</span>,
+    },
   ];
 
   return (
@@ -550,56 +638,64 @@ export default function ConsultarProductos() {
             {/* Tabla de productos */}
             <Card className="border-gray-200 dark:border-slate-700">
               <div className="hidden lg:block">
-              {/*  HEADER Desktop */}
-              <ProductosHeader
-                roles={getRoles()}
-                codigo={codigo}
-                exacto={exacto}
-                onChangeCodigo={setCodigo}
-                onChangeExacto={setExacto}
-                onBuscarRapido={() => handleBuscarProductosRapido(true)}
-                onNuevo={openModal}
-                total={entidadesTotales}
-                mostrados={productos.length}
-                paginaActual={paginaActual}
-                onImprimirTodo={handleImprimirTodo}
-                onImprimirPagina={handleImprimirPagina}
-              />
+                {/*  HEADER Desktop */}
+                <ProductosHeader
+                  roles={getRoles()}
+                  codigo={codigo}
+                  exacto={exacto}
+                  mostrarEliminados={mostrarEliminados}
+                  onChangeCodigo={setCodigo}
+                  onChangeExacto={setExacto}
+                  onChangeMostrarEliminados={setMostrarEliminados}
+                  onBuscarRapido={() => handleBuscarProductosRapido(true)}
+                  onNuevo={openModal}
+                  total={entidadesTotales}
+                  mostrados={productos.length}
+                  paginaActual={paginaActual}
+                  onImprimirTodo={handleImprimirTodo}
+                  onImprimirPagina={handleImprimirPagina}
+                />
               </div>
 
               <div className="lg:hidden">
                 <ProductosHeaderLg
-                codigo={codigo}
-                exacto={exacto}
-                roles={getRoles()}
-                onChangeCodigo={setCodigo}
-                onChangeExacto={setExacto}
-                onBuscarRapido={() => handleBuscarProductosRapido(true)}
-                onNuevo={openModal}
-                total={entidadesTotales}
-                mostrados={productos.length}
-                paginaActual={paginaActual}
-                onImprimirTodo={handleImprimirTodo}
-                onImprimirPagina={handleImprimirPagina}
-              />
+                  codigo={codigo}
+                  exacto={exacto}
+                  mostrarEliminados={mostrarEliminados}
+                  roles={getRoles()}
+                  onChangeCodigo={setCodigo}
+                  onChangeExacto={setExacto}
+                  onChangeMostrarEliminados={setMostrarEliminados}
+                  onBuscarRapido={() => handleBuscarProductosRapido(true)}
+                  onNuevo={openModal}
+                  total={entidadesTotales}
+                  mostrados={productos.length}
+                  paginaActual={paginaActual}
+                  onImprimirTodo={handleImprimirTodo}
+                  onImprimirPagina={handleImprimirPagina}
+                />
               </div>
 
               <CardContent className="p-0">
                 <FiltrosAplicados />
-                <DatosTabla
-                  productos={productos}
-                  columns={columns}
-                  puedeAccionar={puedeHacerAcciones(getRoles())}
-                  onEditar={handleAbrirActualizarProducto}
-                  onInfo={handleMostrarInfo}
-                  onDelete={handleDelete}
-                  onAjustarStock={handleAbrirAjusteStock}
-                  onMovimientos={handleMostrarMovimientosStock}
-                  onCambioPrecios={handleMostrarCambioPrecios}
-                  onHistorial={handleMostrarHistorialPrecios}
-                  onNotificar={handleNotificar}
-                />
-                  
+                {productos.length === 0 ? (
+                  <p className="py-12 text-center text-gray-500 dark:text-gray-400">No se encontraron productos.</p>
+                ) : (
+                  <DatosTabla
+                    productos={productos}
+                    columns={columns}
+                    puedeAccionar={puedeHacerAcciones(getRoles())}
+                    onEditar={handleAbrirActualizarProducto}
+                    onInfo={handleMostrarInfo}
+                    onDelete={handleDelete}
+                    onAjustarStock={handleAbrirAjusteStock}
+                    onMovimientos={handleMostrarMovimientosStock}
+                    onCambioPrecios={handleMostrarCambioPrecios}
+                    onHistorial={handleMostrarHistorialPrecios}
+                    onNotificar={handleNotificar}
+                  />
+                )}
+
                 <div className="lg:hidden space-y-3">
                   {productos.map((producto) => (
                     <DatosCard
@@ -610,23 +706,12 @@ export default function ConsultarProductos() {
                       onDelete={handleDelete}
                       onMovimientos={handleMostrarMovimientosStock}
                       onCambioPrecios={handleMostrarCambioPrecios}
-                      onHistorial={
-                        puedeHacerAcciones(getRoles())
-                          ? handleMostrarHistorialPrecios
-                          : undefined
-                      }
+                      onHistorial={puedeHacerAcciones(getRoles()) ? handleMostrarHistorialPrecios : undefined}
                       onNotificar={handleNotificar}
-                      onAjustarStock={
-                        puedeHacerAcciones(getRoles())
-                          ? handleAbrirAjusteStock
-                          : undefined
-                      }
+                      onAjustarStock={puedeHacerAcciones(getRoles()) ? handleAbrirAjusteStock : undefined}
                     />
                   ))}
                 </div>
-                
-
-
               </CardContent>
             </Card>
 
@@ -639,13 +724,14 @@ export default function ConsultarProductos() {
                 onChange={handlePageChange}
               />
             </div>
-            <Alertas alerts={alerts} onRemove={removeAlert} />
-            <AlertasConfirmacion />
           </>
         )}
+        {/* Fuera del loading: si no, una alerta desaparece apenas se relanza la búsqueda. */}
+        <Alertas alerts={alerts} onRemove={removeAlert} />
+        <AlertasConfirmacion />
       </div>
 
-     {/* ================= MODALES ================= */}
+      {/* ================= MODALES ================= */}
       <ProductosModales
         isAltaOpen={isModalOpen}
         mostrarActualizarProducto={mostrarActualizarProducto}
@@ -656,12 +742,10 @@ export default function ConsultarProductos() {
         mostrarCambioPrecios={mostrarCambioPrecios}
         mostrarProductosAlternativos={mostrarProductosAlternativos}
         mostrarDeQuienEsAlternativo={mostrarDeQuienEsAlternativo}
-
         productoSeleccionado={productoSeleccionado}
         productoHistorial={productoHistorial}
         productoInfo={productoInfo}
         auditoria={auditoria}
-
         onCloseAlta={closeModal}
         onCloseActualizar={handleCerrarActualizarProducto}
         onCloseAjusteStock={handleCerrarAjusteStock}
@@ -671,7 +755,6 @@ export default function ConsultarProductos() {
         onCloseCambioPrecios={handleCerrarCambioPrecios}
         onCloseProductosAlternativos={handleCerrarProductosAlternativos}
         onCloseDeQuienEsAlternativo={handleCerrarDeQuienEsAlternativo}
-
         onSuccessAlta={handleSuccess}
         onSuccessActualizar={handleActualizarSuccess}
         onSuccessAjusteStock={handleAjusteStockSuccess}
@@ -691,8 +774,6 @@ export default function ConsultarProductos() {
         />
       )}
       {/* =========================================== */}
-
-
     </div>
   );
 }

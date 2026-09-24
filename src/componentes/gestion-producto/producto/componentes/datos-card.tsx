@@ -1,8 +1,10 @@
-import { Bell, History, PackagePlus } from "lucide-react";
+import { Bell, History, Info, PackagePlus } from "lucide-react";
+import { EliminadoBadge } from "./eliminado-badge";
 import type { ConsultarProducto } from "../../../../interfaces/gestion-producto/producto/interfaces-producto";
 import { formatPrice } from "../../../herramientas/formateo-de-campos/fucion-formateo";
 import { ActionButton } from "../../../herramientas/reutilizables/action-button";
 import { ProductoActions } from "./producto-action";
+import { textoPresentacion } from "../domain/presentacion-producto";
 
 
 interface Props {
@@ -29,14 +31,27 @@ export function DatosCard({
   onNotificar,
   onAjustarStock,
 }: Props) {
+  const eliminado = Boolean(producto.eliminado);
+
   return (
-    <div className="border border-gray-200 rounded-md bg-white px-3 py-3">
+    <div
+      className={`border rounded-md px-3 py-3 ${
+        eliminado ? "border-red-200 bg-red-50" : "border-gray-200 bg-white"
+      }`}
+    >
       {/* Denominación */}
       <div className="mb-2">
         <p className="text-xs text-gray-500">Denominación</p>
         <p className="text-sm font-medium text-gray-800 line-clamp-2">
           {producto.denominacion}
         </p>
+        {eliminado && <EliminadoBadge />}
+      </div>
+
+      {/* Presentación (CR-002) */}
+      <div className="mb-2">
+        <p className="text-xs text-gray-500">Presentación</p>
+        <p className="text-sm text-gray-700">{textoPresentacion(producto.presentacion)}</p>
       </div>
 
       {/* Proveedor */}
@@ -105,7 +120,17 @@ export function DatosCard({
         </div>
       )}
 
-      {onNotificar && (
+      {eliminado && (
+        <ActionButton
+          variant="info"
+          title="Ver información"
+          onClick={() => onInfo(producto.id)}
+        >
+          <Info size={16} />
+        </ActionButton>
+      )}
+
+      {!eliminado && onNotificar && (
         <ActionButton
           variant="info"
           title="Enviar notificación"
@@ -115,7 +140,7 @@ export function DatosCard({
         </ActionButton>
       )}
 
-      {onAjustarStock && (
+      {!eliminado && onAjustarStock && (
         <ActionButton
           variant="edit"
           title="Ajustar stock"
@@ -125,7 +150,7 @@ export function DatosCard({
         </ActionButton>
       )}
 
-      {onHistorial && (
+      {!eliminado && onHistorial && (
         <ActionButton
           variant="info"
           title="Historial de precios"

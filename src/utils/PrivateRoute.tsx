@@ -16,62 +16,37 @@ interface DecodedToken {
   roles: number[];
   empresaId: number;
   puntoVentaId: number;
- // rolId: number;
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ allowedRoles }) => {
   const token = localStorage.getItem("Token");
   const location = useLocation();
-  let userRole: number | null = null;
   const { showConfirmation, AlertasConfirmacion: AlertasConfirmacion } = useConfirmation();
 
-  const decodedToken: DecodedToken = jwtDecode(token);
-
-  if (!decodedToken.roles || !Array.isArray(decodedToken.roles)) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const userRoles = decodedToken.roles;
-
-  const hasPermission = userRoles.some(role =>
-    allowedRoles.includes(role)
-  );
-
-
-  if (!token) {
-    // Si no está logueado, redirige a login
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
+  // La sesión se resuelve UNA sola vez y de forma consistente.
+  // - Sin token: jamás se intenta decodificar (evita crasheo con jwtDecode(null)).
+  // - Token corrupto/expirado: decodificación falla y se trata como sin sesión.
+  let sesionValida = false;
+  let hasPermission = false;
 
   if (token) {
     try {
       const decodedToken: DecodedToken = jwtDecode<DecodedToken>(token);
       const userRoles = decodedToken.roles;
-      const hasPermission = userRoles.some(role =>
-        allowedRoles.includes(role)
-      );
-      if (hasPermission) {
-        return <Outlet />;
-      }
-      //userRole = decodedToken.rolId;
-    } catch (error) {
-      console.error("Error decoding token", error);
+      sesionValida = Array.isArray(userRoles);
+      hasPermission =
+        sesionValida &&
+        userRoles.some((role) => allowedRoles.includes(role));
+    } catch {
+      sesionValida = false;
     }
   }
 
-//  const userRoles = decodedToken.roles;
+  // Solo avisa por falta de permiso cuando la sesión es válida pero el rol no alcanza.
+  const denied = Boolean(token) && sesionValida && !hasPermission;
 
-  
-
-
- // if (userRole !== null && allowedRoles.includes(userRole)) {
-    // Si el rol es permitido, renderiza el componente hijo
- //   return <Outlet />;
- // }
-
-  // Si el rol no es permitido, muestra una alerta
   React.useEffect(() => {
+    if (!denied) return;
     const handleConfirmation = async () => {
       const confirmed = await showConfirmation({
         type: TipoAlertaConfirmacion.WARNING_ERROR,
@@ -86,9 +61,21 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ allowedRoles }) => {
       }
     };
     handleConfirmation();
-  }, []);
+  }, [denied]);
 
-  // Redirige al usuario a una página de acceso denegado o login
+  // Sin sesión: el acceso a rutas privadas falla de manera controlada.
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (!sesionValida) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (hasPermission) {
+    return <Outlet />;
+  }
+
   return (
     <>
       <AlertasConfirmacion />

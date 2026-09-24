@@ -31,6 +31,13 @@ export function DatosCards({ linea, onEditar, onInfo, onDelete }: Props) {
         )}
       </div>
 
+      <div className="mb-2">
+        <p className="text-xs text-gray-500">SuperLínea</p>
+        <p className="text-sm text-gray-700">
+          {linea.superlineaDenominacion ?? linea.superlinea?.denominacion ?? "—"}
+        </p>
+      </div>
+
       {linea.observacion && (
         <div className="mb-3">
           <p className="text-xs text-gray-500">Observación</p>
@@ -49,7 +56,7 @@ export function DatosCards({ linea, onEditar, onInfo, onDelete }: Props) {
           <ActionButton
             variant="delete"
             onClick={() => onDelete(linea.id)}
-            disabled={linea.sistema}
+            disabled={linea.sistema === 1}
             title="Eliminar"
           >
             <Trash size={16} />

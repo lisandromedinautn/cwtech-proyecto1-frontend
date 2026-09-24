@@ -19,6 +19,7 @@ export interface Column<T> {
   minWidth?: number; // ancho mínimo
   maxWidth?: number; // ancho máximo
   flex?: number;
+  autoHeight?: boolean;
   align?: "left" | "center" | "right";
   scrollable?: boolean;
 }
@@ -59,6 +60,7 @@ export function TablaAGGrid<T extends Record<string, any>>({
         field: col.accessor as string,
         editable: col.editable || false,
         flex: col.flex ?? 1,
+        autoHeight: col.autoHeight,
         //width: col.width,          // <-- ancho fijo (en píxeles)
         minWidth: col.minWidth, // <-- ancho mínimo
         maxWidth: col.maxWidth, // <-- ancho máximo

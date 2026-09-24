@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Lockfile (ignored across OSes)
+package-lock.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -25,3 +28,4 @@ dist-ssr
 
 .opencode/
 .ocx/
+.env
