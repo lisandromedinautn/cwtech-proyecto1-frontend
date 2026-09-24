@@ -2,7 +2,7 @@ import axios from "axios";
 import axiosConfig from "../../../../utils/axiosConfig";
 
 import { createCrudService } from "../../../../utils/crudFactory";
-import { FormValues } from "../interfaces/interfaces-validaciones-producto";
+import type { ProductoPayload } from "../interfaces/interfaces-validaciones-producto";
 import ApiService from "../../../../utils/apiService";
 import type { HistorialPreciosPaginado } from "../../../../interfaces/gestion-producto/historial-precios/interfaces-historial-precios";
 import type { ConsultarProducto } from "../../../../interfaces/gestion-producto/producto/interfaces-producto";
@@ -10,7 +10,7 @@ import type { ConsultarProducto } from "../../../../interfaces/gestion-producto/
 
 const apiUrl = axiosConfig.apiUrl;
 
-const baseService = createCrudService<FormValues>("producto");
+const baseService = createCrudService<ProductoPayload>("producto");
 
 export interface AjusteStockManualPayload {
   cantidad: number;
