@@ -34,6 +34,7 @@ import { getAuthData, getRoles, getUsuarioId } from "../../../../utils/auth";
 import { puedeHacerAcciones } from "../domain/permisos-producto";
 import ProveedorService from "../../../gestion-organizacion/proveedor/services/proveedor-service";
 import { getApiErrorCategory, getApiErrorMessage, normalizeApiError } from "../../../../utils/errores";
+import { textoPresentacion } from "../domain/presentacion-producto";
 import { useNotificaciones } from "../../../../context/notificaciones-context";
 
 
