@@ -29,3 +29,5 @@ package-lock.json
 .opencode/
 .ocx/
 .env
+# Cobertura de tests (vitest --coverage)
+coverage/
