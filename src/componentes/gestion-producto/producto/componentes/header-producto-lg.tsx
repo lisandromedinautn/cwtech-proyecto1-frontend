@@ -5,13 +5,16 @@ import { Input } from "../../../ui/Input";
 import { EstadisticasSimples } from "../../../herramientas/reutilizables/estadisticas-simples";
 import { ImpresionForm } from "../../../herramientas/reutilizables/impresion-form";
 import { puedeAgregarProducto } from "../domain/permisos-producto";
+import { MostrarEliminadosToggle } from "./mostrar-eliminados-toggle";
 
 interface Props {
   codigo: string;
   exacto: boolean;
+  mostrarEliminados: boolean;
   roles:number[];
   onChangeCodigo: (value: string) => void;
   onChangeExacto: (value: boolean) => void;
+  onChangeMostrarEliminados: (value: boolean) => void;
   onBuscarRapido: () => void;
   onNuevo: () => void;
   total: number;
@@ -24,9 +27,11 @@ interface Props {
 export function ProductosHeaderLg({
   codigo,
   exacto,
+  mostrarEliminados,
   roles,
   onChangeCodigo,
   onChangeExacto,
+  onChangeMostrarEliminados,
   onBuscarRapido,
   onNuevo,
   total,
@@ -67,6 +72,7 @@ export function ProductosHeaderLg({
             />
             Exacto
           </label>
+          <MostrarEliminadosToggle checked={mostrarEliminados} onChange={onChangeMostrarEliminados} />
         </div>
 
       </div>

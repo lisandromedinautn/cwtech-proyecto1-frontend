@@ -7,6 +7,7 @@ export interface HistorialPrecio {
   motivo: string;
   fecha: string;
   usuarioId?: number | null;
+  usuarioDenominacion?: string | null;
 }
 
 export interface HistorialPreciosPaginado {

@@ -33,7 +33,10 @@ import { ProductoNotificacion, EntidadTipo } from "../../../NotificacionModal/in
 import { getAuthData, getRoles, getUsuarioId } from "../../../../utils/auth";
 import { puedeHacerAcciones } from "../domain/permisos-producto";
 import ProveedorService from "../../../gestion-organizacion/proveedor/services/proveedor-service";
+import SuperlineaService from "../../superlinea/services/superlinea-service";
 import { getApiErrorCategory, getApiErrorMessage, normalizeApiError } from "../../../../utils/errores";
+import { textoPresentacion } from "../domain/presentacion-producto";
+import { EliminadoBadge } from "../componentes/eliminado-badge";
 import { useNotificaciones } from "../../../../context/notificaciones-context";
 
 
@@ -61,9 +64,11 @@ export default function ConsultarProductos() {
   const { configuracion } = useConfiguracionSistema();
   const [codigo, setCodigo] = useState<string>("");
   const [exacto, setExacto] = useState<boolean>(true);
+  const [mostrarEliminados, setMostrarEliminados] = useState<boolean>(false);
   const [auditoria, setAuditoria] = useState<Auditoria>({} as Auditoria);
   const isMounted = useRef(false);
   const inicializacionCompleta = useRef(false);
+  const busquedaRequestId = useRef(0);
   const { empresaId } = getAuthData();
 
   // =========================
@@ -82,7 +87,9 @@ export default function ConsultarProductos() {
     limpiarFiltros,
     buscar,
     setBuscar,
+    busquedaRapida,
     setBusquedaRapida,
+    buscarSuperlineas,
   } = useFiltrosContext();
 
   const filtrosInicialesConsultarProducto = useFiltrosIniciales("consultar-producto");
@@ -110,6 +117,7 @@ export default function ConsultarProductos() {
     setLineas,
     setMarcas,
     setProveedores,
+    setSuperlineas,
   } = useCatalogosContext();
   
   // Setear qué filtros mostrar en la sidebar
@@ -120,6 +128,7 @@ export default function ConsultarProductos() {
       denominacion: true,
       codigoProveedor: true,
       linea: true,
+      superlinea: true,
       marca: true,
       proveedor: true,
       conStock: true,
@@ -133,11 +142,21 @@ export default function ConsultarProductos() {
 
   useEffect(() => {
     if (!inicializacionCompleta.current) return;
+    if (!codigo.trim()) return;
     const timer = setTimeout(() => {
       handleBuscarProductosRapido();
     }, 400);
     return () => clearTimeout(timer);
   }, [codigo, exacto]);
+
+  useEffect(() => {
+    if (!inicializacionCompleta.current) return;
+    if (busquedaRapida) {
+      handleBuscarProductosRapido(true);
+    } else {
+      handleBuscarProductos(true);
+    }
+  }, [mostrarEliminados]);
 
   useEffect(() => {
     if (buscar.cont > 0 && buscar.componente === "consultar-producto") {
@@ -213,6 +232,26 @@ export default function ConsultarProductos() {
   useEffect(() => {
     fetchLineas();
   }, [valoresFiltros.denominacionLinea]);
+
+  const fetchSuperlineas = async () => {
+    const denominacion = valoresFiltros.denominacionSuperlinea?.trim();
+    if (!denominacion) {
+      setSuperlineas([]);
+      return;
+    }
+
+    try {
+      const response = await SuperlineaService.obtener({ denominacion, skip: 0, take: 10 });
+      setSuperlineas(response.data);
+    } catch (err: unknown) {
+      console.error("Error al obtener SuperLíneas:", err);
+      setError("No se pudieron cargar las SuperLíneas.");
+    }
+  };
+
+  useEffect(() => {
+    if (buscarSuperlineas > 0) fetchSuperlineas();
+  }, [buscarSuperlineas]);
 
   const fetchMarcas = async () => {
     setError(null);
@@ -314,7 +353,8 @@ export default function ConsultarProductos() {
     const confirmed = await showConfirmation({
       type: TipoAlertaConfirmacion.DESTRUCTIVE,
       title: TituloAlertaConfirmacion.DESTRUCTIVE,
-      message: "¿Estás seguro de que quieres eliminar este elemento? Esta acción no se puede deshacer.",
+      message:
+        "¿Querés eliminar este producto? Dejará de aparecer en el listado; podés volver a verlo activando \"Mostrar eliminados\".",
       confirmText: "Eliminar",
       cancelText: "Cancelar",
       onConfirm: () => {},
@@ -479,24 +519,31 @@ export default function ConsultarProductos() {
 
   const handleBuscarProductos = async (botonBuscar?: boolean) => {
     setBusquedaRapida(false);
+    const requestId = ++busquedaRequestId.current;
     if (botonBuscar) {
       resetearPaginacion();
     }
     setLoading(true);
 
-    const filtrosConPaginacion = {
-      denominacion: valoresFiltros.denominacion,
-      codigoProveedor: valoresFiltros.codigoProveedor,
-      codigoReferencia: valoresFiltros.codigoReferencia,
-      codProveedorExacto: valoresFiltros.codProveedorExacto,
-      codReferenciaExacto: valoresFiltros.codReferenciaExacto,
-      lineaId: valoresFiltros.lineaId,
-      marcaId: valoresFiltros.marcaId,
-      proveedorId: valoresFiltros.proveedorId,
-      conStock: valoresFiltros.conStock,
-      skip: skip,
-      take: take,
-    };
+    try {
+      const productosFiltrados = await ProductoService.buscarPorFiltros({
+        denominacion: valoresFiltros.denominacion,
+        linea: valoresFiltros.denominacionLinea,
+        superlinea: valoresFiltros.denominacionSuperlinea,
+        incluirEliminados: mostrarEliminados,
+        skip: botonBuscar ? 0 : skip,
+        take,
+      });
+      if (requestId !== busquedaRequestId.current) return;
+      setProductos(productosFiltrados.data);
+      setEntidadesTotales(productosFiltrados.total);
+    } catch (err: unknown) {
+      if (requestId !== busquedaRequestId.current) return;
+      notificarErrorBusqueda(err);
+    } finally {
+      if (requestId === busquedaRequestId.current) setLoading(false);
+    }
+  };
 
     const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
     aplicarResultados(productosFiltrados);
@@ -504,7 +551,9 @@ export default function ConsultarProductos() {
   };
 
   const handleBuscarProductosRapido = async (botonBuscar?: boolean) => {
+    if (!codigo.trim()) return;
     setBusquedaRapida(true);
+    const requestId = ++busquedaRequestId.current;
     if (botonBuscar) {
       resetearPaginacion();
     }
@@ -513,6 +562,7 @@ export default function ConsultarProductos() {
     const filtrosConPaginacion = {
       codigo: codigo,
       exacto: exacto,
+      incluirEliminados: mostrarEliminados,
       skip: skip,
       take: take,
     };
@@ -556,6 +606,7 @@ export default function ConsultarProductos() {
           >
             <Star size={16} className={row.esAlternativo ? "text-red-500 shrink-0" : "text-yellow-500 shrink-0"} />
             <span>{value}</span>
+            {row.eliminado && <EliminadoBadge />}
           </div>
           {row.observacion && <div className="text-sm text-gray-500 truncate max-w-[700px]">{row.observacion}</div>}
         </div>
@@ -607,8 +658,10 @@ export default function ConsultarProductos() {
                   roles={getRoles()}
                   codigo={codigo}
                   exacto={exacto}
+                  mostrarEliminados={mostrarEliminados}
                   onChangeCodigo={setCodigo}
                   onChangeExacto={setExacto}
+                  onChangeMostrarEliminados={setMostrarEliminados}
                   onBuscarRapido={() => handleBuscarProductosRapido(true)}
                   onNuevo={openModal}
                   total={entidadesTotales}
@@ -623,9 +676,11 @@ export default function ConsultarProductos() {
                 <ProductosHeaderLg
                   codigo={codigo}
                   exacto={exacto}
+                  mostrarEliminados={mostrarEliminados}
                   roles={getRoles()}
                   onChangeCodigo={setCodigo}
                   onChangeExacto={setExacto}
+                  onChangeMostrarEliminados={setMostrarEliminados}
                   onBuscarRapido={() => handleBuscarProductosRapido(true)}
                   onNuevo={openModal}
                   total={entidadesTotales}
@@ -638,19 +693,23 @@ export default function ConsultarProductos() {
 
               <CardContent className="p-0">
                 <FiltrosAplicados />
-                <DatosTabla
-                  productos={productos}
-                  columns={columns}
-                  puedeAccionar={puedeHacerAcciones(getRoles())}
-                  onEditar={handleAbrirActualizarProducto}
-                  onInfo={handleMostrarInfo}
-                  onDelete={handleDelete}
-                  onAjustarStock={handleAbrirAjusteStock}
-                  onMovimientos={handleMostrarMovimientosStock}
-                  onCambioPrecios={handleMostrarCambioPrecios}
-                  onHistorial={handleMostrarHistorialPrecios}
-                  onNotificar={handleNotificar}
-                />
+                {productos.length === 0 ? (
+                  <p className="py-12 text-center text-gray-500 dark:text-gray-400">No se encontraron productos.</p>
+                ) : (
+                  <DatosTabla
+                    productos={productos}
+                    columns={columns}
+                    puedeAccionar={puedeHacerAcciones(getRoles())}
+                    onEditar={handleAbrirActualizarProducto}
+                    onInfo={handleMostrarInfo}
+                    onDelete={handleDelete}
+                    onAjustarStock={handleAbrirAjusteStock}
+                    onMovimientos={handleMostrarMovimientosStock}
+                    onCambioPrecios={handleMostrarCambioPrecios}
+                    onHistorial={handleMostrarHistorialPrecios}
+                    onNotificar={handleNotificar}
+                  />
+                )}
 
                 <div className="lg:hidden space-y-3">
                   {productos.map((producto) => (
@@ -680,10 +739,11 @@ export default function ConsultarProductos() {
                 onChange={handlePageChange}
               />
             </div>
-            <Alertas alerts={alerts} onRemove={removeAlert} />
-            <AlertasConfirmacion />
           </>
         )}
+        {/* Fuera del loading: si no, una alerta desaparece apenas se relanza la búsqueda. */}
+        <Alertas alerts={alerts} onRemove={removeAlert} />
+        <AlertasConfirmacion />
       </div>
 
       {/* ================= MODALES ================= */}

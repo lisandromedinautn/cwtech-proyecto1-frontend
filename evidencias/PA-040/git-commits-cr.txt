@@ -1,0 +1,3 @@
+9e263f1 Merge pull request #23 from lisandromedinautn/PA-025-Incorporar-Presentacion-en-frontend-CR-002
+94c5504 PA-028 — Incorporar SuperLínea en frontend (CR-003)
+9ec792f feat(superlinea): incorporar SuperLínea en frontend

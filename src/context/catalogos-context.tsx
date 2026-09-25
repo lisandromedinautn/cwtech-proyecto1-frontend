@@ -7,10 +7,13 @@ import { SelectProveedor } from "../interfaces/gestion-organizacion/proveedor/in
 import { SelectCondicionIva } from "../interfaces/gestion-organizacion/condicion-iva/interfaces-condicion-iva";
 import { SelectProvincia } from "../interfaces/gestion-organizacion/localidad/interfaces-localidad";
 import { SelectFamiliaBanco } from "../interfaces/gestion-organizacion/banco/interfaces-banco";
+import { SelectSuperlinea } from "../interfaces/gestion-producto/superlinea/interfaces-superlinea";
 
 interface CatalogosContextType {
   lineas: SelectLinea[];
   setLineas: (lineas: SelectLinea[]) => void;
+  superlineas: SelectSuperlinea[];
+  setSuperlineas: (superlineas: SelectSuperlinea[]) => void;
   sublineas: SelectSublinea[];
   setSublineas: (sublineas: SelectSublinea[]) => void;
   marcas: SelectMarca[];
@@ -37,6 +40,7 @@ export const useCatalogosContext = () => {
 
 export const CatalogosProvider = ({ children }: { children: ReactNode }) => {
   const [lineas, setLineas] = useState<SelectLinea[]>([]);
+  const [superlineas, setSuperlineas] = useState<SelectSuperlinea[]>([]);
   const [sublineas, setSublineas] = useState<SelectSublinea[]>([]);
   const [marcas, setMarcas] = useState<SelectMarca[]>([]);
   const [clientes, setClientes] = useState<SelectCliente[]>([]);
@@ -50,6 +54,8 @@ export const CatalogosProvider = ({ children }: { children: ReactNode }) => {
       value={{
         lineas,
         setLineas,
+        superlineas,
+        setSuperlineas,
         sublineas,
         setSublineas,
         marcas,

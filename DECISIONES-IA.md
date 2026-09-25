@@ -411,3 +411,699 @@ validación para corregir antes de considerar PA-025 plenamente aceptada.
   ejecutar sus aserciones. Las 47 pruebas restantes pasan.
 - Sin prueba manual nueva contra el backend en esta auditoría; se debe ejecutar el caso de
   más de dos decimales al corregir el defecto.
+
+## [2026-09-23] PA-020 — Filtro "Exacto" de producto: booleanos de query, búsqueda rápida solo por código y filtro lateral acumulable
+
+- **Tarjeta / CR:** PA-020 (rama `Pa-020-Testing`); hallazgos 6 y 7 del informe de testing del equipo
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: analizar a fondo el checkbox "Exacto" de la pantalla de productos, presente en el
+buscador rápido del header y en el filtro lateral. Síntomas reportados: al clickear el "Exacto"
+del header la aplicación "explota"; en el filtro lateral la búsqueda exacta anda, pero al
+destildarlo y buscar "DEMO" no trae nada. El informe de un colega señalaba además que la búsqueda
+no exacta del header también buscaba por denominación. Después del análisis, el equipo decidió:
+la búsqueda rápida es **únicamente por código**; el filtro lateral es **acumulable (AND)**; dejar
+las decisiones documentadas en este archivo (y crear uno equivalente en el back).
+
+### Respuesta / propuesta de la IA
+
+Reprodujo los dos síntomas contra el backend local y encontró una **única causa raíz en el back**,
+no en la generalización del filtro lateral:
+
+- `main.ts` usa `ValidationPipe` con `enableImplicitConversion: true`. Con `class-transformer`
+  0.5.1 esa conversión corre **antes** del `@Transform` del DTO y hace `Boolean("false") === true`.
+  El `@Transform` nunca recibe el string original.
+- Header (`GET /producto/search-by-rapido`): el `@Transform` de `exacto` solo aceptaba los strings
+  `'true'`/`'false'`, recibía un booleano y devolvía `undefined`, así que el endpoint respondía
+  **400 siempre**, con `exacto` en `true` o en `false`. En el front, `handleBuscarProductosRapido`
+  no tenía `try/catch`: `setLoading(false)` nunca se ejecutaba y la pantalla quedaba en
+  "Cargando productos..." con el header desmontado. Eso era el "explota".
+- Filtro lateral (`GET /producto/search-by`): `codProveedorExacto=false` llegaba como `true`, por lo
+  que **siempre buscaba exacto** (`= 'DEMO'` en vez de `LIKE '%DEMO%'`). `conStock` tenía el mismo
+  `@Transform` que `exacto`, así que "Solo con stock" nunca se aplicaba.
+- Además, el filtro lateral unía denominación, código y código de referencia con `OR`, y la
+  búsqueda rápida no exacta incluía `denominacion`.
+
+Propuso un decorador compartido `@ToBoolean()` que lee el valor crudo (`obj[key]`), corregir la
+semántica de ambas queries y agregar manejo de errores en el front. Dejó al equipo las decisiones
+de semántica.
+
+### Decisión tomada
+
+- **Búsqueda rápida (header): solo por código.** Exacto → `codigoProveedor = :codigo OR
+  codigoReferencia = :codigo`. No exacto → `LIKE '%codigo%'` sobre esos mismos dos campos. Se quitó
+  `denominacion`: para eso está el filtro de denominación.
+- **Filtro lateral: acumulable.** Cada criterio cargado se agrega con `AND` (denominación, código
+  de proveedor, código de referencia, línea, marca, proveedor, con stock).
+- **Booleanos de query:** nuevo `@ToBoolean()` en el back, aplicado a `exacto`,
+  `codProveedorExacto`, `codReferenciaExacto` y `conStock`.
+- **Front:** `handleBuscarProductos` y `handleBuscarProductosRapido` ahora usan
+  `try/catch/finally`. Ante un error vacían la tabla, muestran una alerta con el mensaje del backend
+  y siempre apagan el `loading`.
+
+### Qué se descartó y por qué
+
+- **Arreglarlo en el front (mandar `1`/`0` o no mandar el flag):** esconde el bug. Cualquier otro
+  cliente, o Swagger, seguiría recibiendo `false` como `true`.
+- **Sacar `enableImplicitConversion` de `main.ts`:** es global, y otros DTOs dependen de él para
+  convertir números de la query sin `@Type`. El riesgo de romper otros endpoints era alto para este
+  alcance.
+- **Mantener `denominacion` en la búsqueda rápida:** el input dice "Código..." y el equipo definió
+  que es solo por código.
+- **Mantener el `OR` en el filtro lateral:** con varios criterios cargados devolvía la unión y no
+  la intersección, contra lo que espera un filtro combinado.
+- **Culpar a la generalización del filtro lateral:** la decisión de abandonarlo sigue en pie, pero
+  el bug estaba en el DTO del back. Sacar solo el sidebar habría dejado el header tirando 400.
+
+### Modificaciones sobre lo generado
+
+Ninguna por ahora; pendiente de revisión del equipo.
+
+### Impacto
+
+Frontend:
+- `src/componentes/gestion-producto/producto/utils/consultar-producto.tsx`: manejo de errores en las
+  dos búsquedas (`notificarErrorBusqueda`).
+
+Backend (detalle en `DECISIONES-IA.md` del back):
+- Nuevo `src/modules/common/decorators/to-boolean.decorator.ts`.
+- `producto/dto/search-producto-rapido.dto.ts` y `search-producto-pagination-with.dto.ts`: usan
+  `@ToBoolean()`.
+- `producto/infraestructure/repositories/producto.persistence-adapters.ts`: `findBy` con `AND`;
+  `findByRapido` sin `denominacion`.
+- `producto/application/controllers/producto.http.spec.ts`: el `ValidationPipe` del test ahora
+  replica el de `main.ts` (`enableImplicitConversion`), más 5 tests de regresión.
+
+Contrato: los endpoints y DTOs no cambian de forma, pero sí de **resultado**. La búsqueda rápida ya
+no matchea por denominación, y el filtro lateral con varios criterios devuelve la intersección.
+
+### Verificación
+
+- Back: `jest` con 49 suites y 185 tests en verde (antes 180). Los 5 tests nuevos se corrieron
+  también **sin** el fix de los DTOs: 4 fallan, lo que confirma que detectan el bug.
+- Back, en vivo contra el server local con el usuario `administrador@gmail.com`:
+  `search-by-rapido` responde 200 con `exacto` en `true` y en `false`; `ACE` no exacto trae
+  `ACE-001` y `aceite` ya no trae nada (no busca por denominación); en `search-by`,
+  `codProveedorExacto=false` hace `LIKE` y `denominacion=ACEITE` + `codigoProveedor=HAR` devuelve 0
+  (intersección).
+- Front: `vitest run` con 11 archivos y 35 tests en verde. `tsc --noEmit -p tsconfig.app.json` da
+  125 errores antes y después, ninguno nuevo. ESLint no marca nada nuevo; los 3 `no-empty` de
+  `consultar-producto.tsx` son preexistentes (`finally {}` vacíos de `fetchLineas`, `fetchMarcas`
+  y `fetchProveedores`).
+- **Sin verificar:** la pantalla en el navegador (no hubo prueba manual de la UI en esta sesión) y
+  el caso de `conStock=true` con productos sin stock (los datos semilla tienen stock en todos). No
+  hay test de front para `consultar-producto.tsx`.
+
+### Deuda técnica detectada y no resuelta
+
+- `incluirEliminados` usa el mismo patrón roto (`value === 'true' || value === true`) en
+  `pagination-with-denominacion.dto.ts`, `denominacion-empresa-operador.dto.ts` y
+  `search-localidad.dto.ts`: mandar `false` equivale a `true`. Se arregla con `@ToBoolean()`, pero
+  queda fuera del alcance de producto.
+- `codReferenciaExacto` se recibe en `search-by` pero el controller lo ignora; la referencia
+  siempre va con `LIKE`.
+- **Paginación y foco en `consultar-producto.tsx`.** El equipo decidió no corregirlos en esta
+  tarjeta y dejarlos como deuda técnica explícita:
+  - `resetearPaginacion()` no afecta al request que sale en la misma llamada: usa el `skip`
+    anterior, así que una búsqueda lanzada desde la página 3 pide el offset de la página 3.
+  - El effect de paginación siempre llama a `handleBuscarProductos` (filtro lateral), nunca a la
+    búsqueda rápida. Al paginar después de una búsqueda rápida se pierde ese filtro. Además,
+    cuando `resetearPaginacion` cambia `paginaActual`, dispara una segunda búsqueda que pisa los
+    resultados de la rápida.
+  - Mientras `loading` es `true`, el spinner reemplaza todo el card, header incluido. El input de
+    código se desmonta y pierde el foco en cada búsqueda con debounce.
+- El buscador de productos reutilizable (`busqueda-producto.tsx`) llama a endpoints
+  `search-productos-by-rapido` de otros módulos que el back actual no expone.
+
+## [2026-09-24] Integración — `Pa-020-Testing` al día con `develop` y `main`; import perdido en `PrivateRoute`
+
+- **Tarjeta / CR:** ninguna propia; preparación de PA-053 y PA-055. Integra PA-051, PA-025 y PA-049
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: traer a la rama de testing los últimos cambios de `develop` (PA-051 de Martina Pineda),
+teniendo en cuenta que `develop` no contenía `main`; analizar el impacto, mergear y crear las ramas
+de PA-053 y PA-055 desde `develop`, al día con `develop` y con testing.
+
+### Respuesta / propuesta de la IA
+
+- `main` contra `develop`: los 2 commits de `main` que faltaban son merges de release sin cambios
+  de contenido.
+- Único conflicto de texto: `DECISIONES-IA.md`. `consultar-producto.tsx` se mergeó solo y convive
+  con el manejo de errores de PA-020 (las alertas de stock crítico de PA-051 se disparan desde un
+  effect sobre `productos`).
+- Después del merge fallaban los 4 tests de `PrivateRoute.test.tsx` con
+  `ReferenceError: useConfirmation is not defined`. El archivo es idéntico en `origin/develop`: el
+  merge `3b8dd1b` ("Merge branch 'develop' into PA-051-Implementar-bajoMinimo") conservó el uso de
+  `useConfirmation()` pero perdió su import. En `develop`, toda ruta privada rompe en ejecución.
+
+### Decisión tomada
+
+- Merges con `--no-ff`: `develop` → `Pa-020-Testing` y `main` → `Pa-020-Testing`. En
+  `DECISIONES-IA.md` se tomó el archivo de `develop` y la entrada de PA-020 quedó al final.
+- Se restauró en `src/utils/PrivateRoute.tsx` el import de `TipoAlertaConfirmacion`,
+  `TituloAlertaConfirmacion` y `useConfirmation` tal como estaba en `0427ce2`.
+- Ramas `PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto` y
+  `PA-055-Comprobar-soft-delete-de-la-lista-de-productos` creadas desde `origin/develop`, con la
+  rama de testing mergeada.
+
+### Qué se descartó y por qué
+
+- **Dejar el fix para un PR aparte sobre `develop`:** la rama de testing y las de PA quedaban con
+  todas las rutas privadas rotas. Se arregló acá, y conviene llevarlo a `develop` cuanto antes.
+- **Rebase sobre `develop`:** reescribe historia ya pusheada.
+
+### Modificaciones sobre lo generado
+
+Ninguna por ahora; pendiente de revisión del equipo.
+
+### Impacto
+
+- `src/utils/PrivateRoute.tsx` (import).
+- Las ramas de PA-053 y PA-055 incluyen todo lo de la rama de testing: sus PRs contra `develop` lo
+  van a arrastrar si no se mergeó antes.
+
+### Verificación
+
+- `vitest run`: 15 archivos y 54 tests en verde. Antes del fix del import, 4 fallidos.
+- `tsc --noEmit -p tsconfig.app.json`: 126 errores. Antes del fix eran 129; el import resolvió 3.
+- **Sin verificar:** la navegación en el navegador.
+
+### Segundo import perdido: `textoPresentacion` (pantalla de productos en blanco)
+
+- El mismo merge `3b8dd1b` perdió también el import de `textoPresentacion` en
+  `consultar-producto.tsx`, aunque la columna de presentación lo sigue usando. La tabla tiraba
+  `ReferenceError: textoPresentacion is not defined` al renderizar las celdas y la pantalla quedaba
+  en blanco. Lo reportó el equipo con la traza del navegador. Se restauró el import de
+  `9e263f1`, y `tsc` bajó de 126 a 125 errores.
+- **Por qué no lo detectó ningún test:** ninguno monta `ConsultarProductos`. Un montaje de
+  diagnóstico en jsdom tampoco lo reprodujo, porque AG Grid no llega a pintar las celdas sin
+  tamaño real. `tsc` sí lo marca (TS2304), igual que el import de `PrivateRoute`. Correr
+  `tsc --noEmit` antes de mergear habría evitado los dos.
+- **Deuda vieja, no tocada:** `tsc` marca otros 8 identificadores sin definir (TS2304) en
+  `sidebarFiltros.tsx` (`CondicionesCerrado`, `EstadoRecibo`, `EstadoPresupuestoN`,
+  `EstadosPedidoVentaBusqueda`, `EstadoCarteraCheques`, `EstadoConfirmacionCarteraCheques`,
+  `OrdenCarteraCheques`) y en `proveedor-modales.tsx` (`ConsultarMovimientosCuenta`). Vienen del
+  commit inicial `02d36a5` y solo se ejecutan en filtros o modales de módulos que producto no usa.
+  Si alguna pantalla los activa, va a romper igual.
+
+## [2026-09-24] PA-053 — Detalles del producto: responsable en el historial de precios y auditoría que muestra solo lo que existe
+
+- **Tarjeta / CR:** PA-053. Revierte parcialmente lo descartado en PA-019 (mostrar el usuario del cambio de precio)
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+- **Repos:** back y front; la misma entrada está en el `DECISIONES-IA.md` de cada uno.
+
+### Prompt
+
+Síntesis: el botón de información (la "I") muestra el último cambio pero no qué se cambió, y el
+historial de precios (el reloj) no muestra quién hizo cada cambio. Analizar qué guarda la
+auditoría y si se puede rastrear qué campo cambió. El equipo decidió que PA-053 **se limita a
+mostrar mejor lo que ya existe** y a que se vea como corresponde, sin agregar un registro de
+cambios por campo.
+
+### Respuesta / propuesta de la IA
+
+- La auditoría de producto son columnas de la misma fila: `createdAt`, `updatedAt`, `deletedAt` y
+  los usuarios de creación, última modificación y baja. Cada edición pisa a la anterior, así que
+  no se puede saber qué campo cambió. El módulo `gestion-sistema/auditoria` es un esqueleto del
+  CLI de Nest sin implementar. Los únicos rastros por campo son `historial_precio` y
+  `movimiento_stock`.
+- `historial_precio.usuario_id` ya se guardaba (en la base local, el cambio del producto 1 es de
+  Jenifer Lopez), pero `findHistorialPrecios` no cargaba la relación y devolvía solo el id.
+- En el modal de auditoría: `updatedAt` se completa ya al crear, así que el bloque "Actualizado"
+  aparecía siempre, con "No especificado"; el ID para Root dependía de un `rolId` que el token no
+  trae, y por eso hacía una request al backend en cada apertura; y `mapProductoToDto` respondía 500
+  si el producto no tenía usuario creador.
+
+### Decisión tomada
+
+- Back: `findHistorialPrecios` carga `usuario` y devuelve `usuarioDenominacion` (null si no hay
+  usuario), sin quitar `usuarioId`. `mapProductoToDto` tolera un producto sin creador.
+- Front: columna "Responsable" en el historial de precios ("—" si no hay). En el modal de
+  auditoría, el bloque pasa a llamarse "Última modificación" y solo aparece si hubo usuario de
+  modificación o una fecha distinta a la de creación. El ID para Root se decide con
+  `getRoles().includes(Rol.ROOT)`.
+
+### Qué se descartó y por qué
+
+- **Registrar los cambios por campo (tabla de bitácora con campo, valor anterior y nuevo):** lo
+  descartó el equipo para esta tarjeta. Cambia el modelo y el esquema, y PA-053 es de
+  visualización.
+- **Mantener lo descartado en PA-019 (mostrar solo el id):** ese descarte se basaba en que el
+  backend no devolvía el nombre. Ahora lo devuelve.
+- **Resolver el nombre del usuario en el front con otra request:** una consulta extra por cada fila,
+  cuando el backend ya tiene la relación.
+- **Ocultar "Última modificación" comparando solo `usuarioUpdated`:** los registros viejos pueden
+  tener fecha de modificación sin usuario. Por eso también se compara la fecha.
+
+### Modificaciones sobre lo generado
+
+Ninguna por ahora; pendiente de revisión del equipo.
+
+### Impacto
+
+- Back: `producto.service.ts` (`findHistorialPrecios`), `dto/historial-precio.dto.ts`,
+  `gestion-sistema/auditoria/mappers/auditoria.mapper.ts`, `producto.service.spec.ts` y el nuevo
+  `auditoria.mapper.spec.ts`.
+- Front: `interfaces-historial-precios.tsx`, `modales/historial-precios-modal.tsx` y su test,
+  `herramientas/reutilizables/informacion-auditoria.tsx` (modal genérico, lo usan también
+  clientes, proveedores, etc.) y el nuevo `informacion-auditoria.test.tsx`.
+- Contrato: `GET /producto/:id/historial-precios` suma `usuarioDenominacion`, y no se quita nada.
+
+### Verificación
+
+- Back: tests del service y del mapper en verde (39 en esos specs). El test del historial
+  verifica que se pida la relación `usuario` y que la respuesta traiga el nombre, o `null`.
+- Front: `vitest run` con 16 archivos y 57 tests en verde. `tsc` sin errores nuevos (125, igual que
+  testing). El test "sin modificaciones" falla con el código anterior, porque el bloque aparecía
+  siempre.
+- **Sin verificar:** el modal en el navegador.
+
+## [2026-09-24] PA-055 — Soft delete de productos: la baja se guarda y los eliminados se pueden consultar
+
+- **Tarjeta / CR:** PA-055
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+- **Repos:** back y front; la misma entrada está en el `DECISIONES-IA.md` de cada uno.
+
+### Prompt
+
+Síntesis: al eliminar un producto no pasa nada. Analizar qué guarda el soft delete y por qué no se
+refleja en el front. Agregar un booleano al lado de filtrados/mostrados para ver los productos
+eliminados, y que en la "I" de esos productos aparezca "Eliminado por" en rojo, con los mismos
+datos que los otros bloques.
+
+### Respuesta / propuesta de la IA
+
+- **Back:** `ProductoService.remove` marcaba `deletedAt` y `usuarioDeleted` y después llamaba a
+  `repository.remove()`. El adapter rechaza con 404 "Entidad ya eliminada." todo producto que ya
+  trae `deletedAt`, así que la baja nunca se guardaba. Reproducido en vivo: `DELETE /producto/7`
+  respondía 404 y la fila quedaba intacta. El bug está desde `a07ce54f` (11/09). En envase y en el
+  resto de las entidades, el que marca la baja es el adapter.
+- **Front:** la alerta del 404 sí aparecía, pero `handleDelete` relanzaba la búsqueda, el spinner
+  desmontaba las alertas (estaban dentro de la rama "no está cargando") y desaparecía al instante.
+- **Consulta de eliminados:** las dos búsquedas filtraban siempre `deletedAt IS NULL`. La
+  auditoría (`findByIdConAuditoria`) no filtra, así que la "I" funciona para un eliminado.
+- **El modal ya tenía** un bloque "Eliminado" en rojo que nunca se veía. Como la baja pisa
+  `updatedAt`, el bloque de actualización mostraría la fecha de la baja con el editor anterior.
+
+### Decisión tomada
+
+- **Back:**
+  - El adapter recibe el usuario y marca la baja (`remove(producto, usuario)`), igual que envase.
+  - `incluirEliminados` (con `@ToBoolean(false)`) en `search-by` y `search-by-rapido`, como último
+    parámetro con valor por defecto, para no romper la firma posicional.
+  - `eliminado` en cada producto del listado.
+- **Front:**
+  - Toggle "Mostrar eliminados" junto a filtrados/mostrados, en los dos headers; al cambiarlo se
+    relanza la búsqueda activa (rápida o filtrada).
+  - Los eliminados se marcan con "Eliminado" en rojo y solo ofrecen "Ver información".
+  - Las alertas quedan fuera del spinner, y la confirmación explica que es una baja lógica.
+  - En el modal, para un registro eliminado se reemplaza "Actualizado" por "Eliminado por" en rojo.
+- **Semántica del toggle:** *incluye* los eliminados junto a los activos, no muestra "solo
+  eliminados". Es la misma convención que `incluirEliminados` en los DTOs comunes del back.
+
+### Qué se descartó y por qué
+
+- **Arreglarlo sacando el chequeo del adapter:** se perdía la protección contra dar de baja dos
+  veces. Además, el resto de las entidades ya usa el patrón de que el adapter marque la baja.
+- **Toggle de "solo eliminados":** duplica la búsqueda y rompe la convención de `incluirEliminados`.
+  Se puede agregar después si el equipo lo pide.
+- **Permitir editar, ajustar stock o ver el historial de un eliminado:** esos endpoints usan
+  `findOne`, que filtra `deletedAt`, y responderían 404. Restaurar un producto queda fuera del
+  alcance de PA-055.
+- **Evitar que la baja pise `updatedAt`:** requiere una actualización a medida que saltee
+  `@UpdateDateColumn`. Se resolvió en la vista, reemplazando el bloque.
+
+### Modificaciones sobre lo generado
+
+Ninguna por ahora; pendiente de revisión del equipo.
+
+### Impacto
+
+- **Back:**
+  - `producto.service.ts` (`remove`, `findBy`, `findByRapido`), `producto.persistence-adapters.ts`,
+    `producto.repository.ts` y `producto.repository-interface.ts`.
+  - `producto.controller.ts`, los dos DTOs de búsqueda, `get-producto.dto.ts` y
+    `producto.mapper.ts`.
+  - Tests: `producto.service.spec.ts`, `producto.persistence-adapters.spec.ts`,
+    `producto.http.spec.ts`, `producto.controller.spec.ts` y `producto.mapper.spec.ts`.
+- **Front:**
+  - `consultar-producto.tsx`, `header-producto.tsx`, `header-producto-lg.tsx`,
+    `producto-action.tsx`, `datos-card.tsx` e `interfaces-producto.tsx`.
+  - Nuevos `mostrar-eliminados-toggle.tsx` y `eliminado-badge.tsx`.
+  - `informacion-auditoria.tsx` y 4 archivos de test.
+- **Contrato:** `incluirEliminados` (opcional, `false` por defecto) en las dos búsquedas, y
+  `eliminado` en la respuesta del listado.
+
+### Verificación
+
+- **Back:** 252 tests de producto en verde.
+  - Mutación: con las dos líneas viejas del service repuestas, el test de regresión ("delega la
+    baja en el repositorio con el usuario, sin marcarla antes") falla.
+  - Los specs del adapter verifican que `deletedAt IS NULL` esté o no esté según
+    `incluirEliminados`. Antes, quitar esa condición no rompía ningún test.
+- **Front:** `vitest run` con 18 archivos y 62 tests en verde. `tsc` sin errores nuevos (125).
+- **En vivo:** ver la verificación de la rama de unificación.
+- **Sin verificar:** la UI en el navegador.
+
+## [2026-09-24] PA-030 — Búsqueda por denominación, Línea y SuperLínea
+
+- **Tarjeta / CR:** PA-030 / CR-004
+- **Herramienta:** OpenCode (GPT-5.6 Luna) + Chrome DevTools MCP
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis fiel: adaptar la búsqueda de productos al contrato real de `/producto/search-by`, con
+filtros textuales combinables, paginación, estados de UI y tests; luego replicar para SuperLínea el
+flujo de Línea, donde Enter busca coincidencias y llena un `react-select`.
+
+### Respuesta / propuesta de la IA
+
+Se separó la búsqueda normal de la búsqueda rápida por código. La normal arma únicamente los
+parámetros textuales del contrato, omite vacíos y protege contra respuestas obsoletas. Para
+SuperLínea se replicó el patrón de Línea con un contador en el contexto, consulta a
+`SuperlineaService` y catálogo independiente.
+
+### Decisión tomada
+
+Se implementó la búsqueda PA-030 con `denominacion`, `linea`, `superlinea`, `skip`, `take` y el
+toggle existente de eliminados. Los valores se recortan antes de enviarse y Axios serializa la
+query. El selector de SuperLínea conserva la denominación elegida, porque ese es el parámetro que
+exige el backend.
+
+### Qué se descartó y por qué
+
+- **Enviar ids de Línea o SuperLínea:** se descartó porque el contrato exige coincidencias parciales
+  por denominación.
+- **Leer nombres de Línea o SuperLínea desde cada producto:** se descartó porque no forman parte del
+  DTO de búsqueda.
+- **Disparar la búsqueda rápida con código vacío:** se descartó para evitar que sobrescriba una
+  búsqueda normal.
+
+### Modificaciones sobre lo generado
+
+Se preservaron los cambios de `develop` relacionados con soft delete, notificaciones y auditoría al
+crear la rama de feature; los cambios de PA-030 se integraron sobre esa base.
+
+### Impacto
+
+Se modificaron `producto-service.tsx`, `consultar-producto.tsx`, `sidebarFiltros.tsx`,
+`catalogos-context.tsx` y `filtros-contesxt.tsx`. Se agregó el test de armado de parámetros de
+`producto-service`.
+
+### Verificación
+
+- `npm run build`: correcto.
+- Tests focalizados de PA-030: 5 en verde.
+- Chrome DevTools: `Choc` mostró `CHOCOLATES`; `Beb` mostró `BEBIDAS` y la selección dejó `BEBIDAS`
+  en el input. Se verificó `/api/superlinea/search-by?denominacion=Beb&skip=0&take=10`.
+- La suite completa mantiene 52 tests en verde y 4 fallos preexistentes de `PrivateRoute` por
+  `localStorage` no disponible.
+
+## [2026-09-24] Unificación — `unificacion-testing-PA-053-PA-055`, rama única para llevar a `develop`
+
+- **Tarjeta / CR:** PA-053 y PA-055, más lo acumulado en testing (PA-020, arreglo de tests y la integración de PA-029)
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: en las ramas de testing commitear solo lo referido a testing y poner cada funcionalidad
+en su PA; crear una rama que unifique todo para después mergearla a `develop`, esperando permiso
+del equipo para ese merge.
+
+### Decisión tomada
+
+- La rama `unificacion-testing-PA-053-PA-055` sale de `origin/develop` y mergea, con `--no-ff` y en
+  este orden, testing, PA-053 y PA-055.
+- Conflictos resueltos:
+  - `DECISIONES-IA.md`: quedan las entradas de las dos PA, en orden.
+  - En el front, `informacion-auditoria.tsx`: la última modificación se muestra si la hubo
+    (PA-053) y si el registro no está eliminado (PA-055).
+- **El merge a `develop` queda pendiente de permiso.** En el back, `develop` está protegida y el
+  merge tiene que entrar por PR.
+
+### Qué se descartó y por qué
+
+- **Squash de todo en un único commit:** se pierde la trazabilidad por PA que pide la consigna.
+- **Mergear las PA directamente a `develop`:** el equipo pidió una rama única y revisar antes.
+
+### Verificación
+
+- Back: `tsc` sin errores; `jest` con 56 suites y 356 tests en verde.
+- Front: `vitest run` con 19 archivos y 65 tests en verde; `tsc` con 125 errores, ninguno nuevo.
+  Los únicos TS2304 son los 8 viejos registrados en la integración.
+- En vivo, back de esta rama levantado en el puerto 3001 contra la base local:
+  - historial del producto 1: `usuarioDenominacion` "Jenifer Lopez";
+  - `DELETE /producto/7?usuarioId=4`: 200, `deletedAt` cargado y `usuario_deleted_id = 4`;
+  - un segundo DELETE: 404;
+  - `search-by`: 6 resultados sin `incluirEliminados` y 7 con `incluirEliminados=true`, con
+    `MAR-001` marcado `eliminado`. Lo mismo en `search-by-rapido`;
+  - `GET /producto/7/audit`: `usuarioDeleted` "Jenifer Lopez".
+
+  Después de la prueba se restauró el producto 7 en la base local.
+- **Sin verificar:** la UI en el navegador.
+
+## [2026-09-24] Revisión de deudas técnicas del front
+
+- **Tarjeta / CR:** ninguna propia; revisión de deuda técnica
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** Lisandro (PIPICBA)
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: revisar si las deudas documentadas siguen activas comprobándolas en el código, no en
+este archivo, y registrar nuevas deudas.
+
+### Estado de las deudas ya registradas (comprobado en el código de `develop`)
+
+- **Activa:** paginación en `consultar-producto.tsx` tras una búsqueda rápida. Desde una página
+  mayor a 1, `resetearPaginacion()` cambia `paginaActual` y el effect de paginación dispara
+  `handleBuscarProductos()` (búsqueda normal). Esa búsqueda toma un `requestId` nuevo y descarta la
+  respuesta de la rápida: se ven los resultados de la búsqueda normal. La rápida sigue mandando el
+  `skip` anterior, paginar en modo rápido pierde el código y el spinner sigue desmontando el input.
+- **Activa, y alcanzable:** los 8 TS2304 siguen (`tsc`: 125 errores). `ConsultarMovimientosCuenta`
+  **sí se ejecuta**: el botón "Movimientos" de `proveedor-card.tsx` (vista mobile) abre ese modal y
+  la pantalla tira `ReferenceError`. Los 7 de `sidebarFiltros.tsx` están detrás de filtros que
+  ninguna pantalla activa.
+- **Activa:** la vista agrupada por SuperLínea no existe en el front, aunque el endpoint está.
+- **Código muerto:** `busqueda-producto.tsx` apunta a `search-productos-by-rapido` de módulos que el
+  back no tiene, pero solo lo importan `seleccion-producto*.tsx`, que nadie importa.
+
+### Deuda técnica detectada y no resuelta
+
+- **Testing e2e.** No hay e2e (Playwright, Cypress o similar). Los bugs de imports perdidos de
+  `PrivateRoute` y `textoPresentacion` y el de la paginación no los detecta ningún test, porque
+  ninguno monta `ConsultarProductos` en un navegador real.
+- **Recuperar un producto borrado.** La pantalla muestra los eliminados (`mostrarEliminados`), pero
+  no ofrece restaurarlos. Depende de un endpoint que el back tampoco tiene.
+- **Las notificaciones no se borran con "Limpiar".** Reportado por el equipo. `limpiarNotificaciones`
+  vacía el estado del context, pero las alertas de stock crítico se vuelven a generar desde
+  `consultar-producto.tsx` (`mostrarAlertasStockCritico`). Su guarda
+  (`notificadosStockCriticoRef`) se reinicia cada vez que la pantalla se monta, y las
+  notificaciones no se persisten. Causa probable, sin verificar en el navegador.
+- **Desfasaje en la vista mobile.** Reportado por el equipo, sin detalle todavía: la vista mobile
+  (cards, `lg:hidden`) no se comporta igual que la de escritorio (tabla). Ejemplo ya comprobado: el
+  botón "Movimientos" de proveedor existe solo en mobile y rompe la pantalla. Falta relevar el resto
+  de las diferencias.
+
+## [2026-09-24] PA-032 — Denominación automática en el alta del producto
+
+- **Tarjeta / CR:** PA-032 (CR-005 / US-05). Consume el contrato de PA-031 del backend (merge `bf75fff`).
+- **Herramienta:** Claude Opus 5.5 vía Claude Code
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+
+Síntesis: adaptar el frontend a la denominación automática de CR-005, respetando lo que espera
+el backend (commit `bf75fff`). Criterios de aceptación: en el alta, por defecto, la UI muestra la
+denominación generada con Marca + Línea + Presentación; el usuario puede editarla a mano; la UI no
+duplica la regla como fuente de verdad y consume la semántica del backend; una vez creado el
+producto, un cambio de marca, línea o presentación no la regenera; tests de la generación visible,
+la edición manual y la ausencia de regeneración. Ejemplo: Coca-Cola + Gaseosas + BOTELLA 500 ml →
+"Coca-Cola Gaseosas BOTELLA 500 ml"; si después la presentación pasa a LATA 500 ml, la
+denominación se conserva.
+
+### Respuesta / propuesta de la IA
+
+Relevó el backend de PA-031: `CreateProductoDto` acepta `generarDenominacionAutomatica?: boolean`;
+con `true`, el backend ignora la `denominacion` recibida y la arma con
+`Producto.generarDenominacionAutomatica(marca, línea, presentacion.texto(envase))`, ya normalizada
+("COCA-COLA GASEOSAS BOTELLA 500 ml", "1 L", "1 unidad"). Sin el flag, la denominación manual
+sigue siendo obligatoria, y el `PUT` nunca la regenera. Señaló que el front no tiene el texto
+normalizado antes de guardar (el alta responde solo un mensaje) y planteó tres dudas: cómo mostrar
+el nombre antes de guardar, qué pasa al desbloquear el campo y cómo mostrar el 409 por
+denominación repetida.
+
+### Decisión tomada
+
+- **La regla sigue en el backend.** En el alta, por defecto, el formulario manda
+  `generarDenominacionAutomatica: true` **sin** `denominacion`, y el backend arma el nombre final.
+- **Vista previa, no fuente de verdad.** El formulario muestra una vista previa con los datos
+  cargados: marca, línea, envase, valor y unidad (`domain/denominacion-producto.ts`,
+  `vistaPreviaDenominacion`). **No normaliza** el contenido, así que difiere del nombre guardado
+  cuando el backend convierte ("1000 ml" → "1 L", "1 unidades" → "1 unidad"); la leyenda del
+  campo lo aclara. Es el mismo criterio que el "Precio de venta estimado".
+- **Modo manual.** Debajo del campo hay un check "Denominación automática", marcado por defecto
+  en el alta. Al desmarcarlo, el campo se habilita con la vista previa ya escrita; desde ahí, los
+  cambios de marca, línea o presentación no tocan el texto, y el payload lleva `denominacion` sin
+  el flag. Al volver a marcarlo, se descarta lo escrito y se reactiva la generación.
+- **Edición.** El campo es el de siempre, editable a mano, y el flag nunca viaja: un cambio de
+  marca, línea o presentación no regenera la denominación.
+- **409.** Se muestra el mensaje del backend al pie del formulario ("La denominación "X" ya está
+  en uso."), en vez del genérico de `CONFLICTO`. Si estaba en automática, se agrega "Podés editar
+  la denominación manualmente.". `utils/errores` no se tocó.
+- **Esquema:** con la automática, `denominacion` no se valida en el front (la valida el backend).
+- **Servicio:** `ProductoService` se tipa con `ProductoPayload` (lo que arma
+  `armarPayloadProducto`) en lugar de `FormValues`, porque con la automática la denominación no
+  viaja.
+
+### Qué se descartó y por qué
+
+- **Copiar en React la normalización del contenido** para que la vista previa sea exacta: repite
+  la regla N2 del dominio (ya se descartó en PA-025) y va contra el criterio "la UI no duplica la
+  regla".
+- **Un endpoint de previsualización en el backend:** daría la vista previa exacta, pero toca el
+  backend (otra tarjeta) y hace un request por cada cambio de marca, línea o presentación. Queda
+  como deuda (abajo).
+- **Componer el nombre en el front y mandarlo en `denominacion`:** el front sería la fuente de
+  verdad, justo lo que el criterio de aceptación prohíbe.
+- **Desbloquear sin poder volver a la automática, o con el campo vacío:** obliga a reescribir el
+  nombre, o a cerrar el formulario, para recuperar la generación.
+- **Mostrar el 409 debajo del campo Denominación:** para distinguirlo de otro 409 (por ejemplo, un
+  código repetido) habría que buscar la palabra "denominación" en el mensaje, que es frágil.
+
+### Deuda técnica asumida
+
+- **Vista previa aproximada.** Mientras el backend no exponga la previsualización, la vista previa
+  puede no coincidir con el nombre guardado en los casos que normaliza. Propuesta: un endpoint (por
+  ejemplo `GET /api/producto/denominacion-automatica?marcaId&lineaId&envaseId&cantidad&unidad`)
+  que use `Producto.generarDenominacionAutomatica`, y que el front lo consulte en lugar de armar el
+  texto.
+- **Largo máximo de la generada:** la valida solo el backend, con el límite de 200 caracteres del
+  servicio (deuda previa: el DTO acepta 255). Si se pasa, el mensaje del backend aparece al pie.
+
+### Modificaciones sobre lo generado
+
+- La primera versión dejaba `ProductoService` tipado con `FormValues`, y `tsc` sumó 2 errores
+  (127 contra 125). Se corrigió tipando el servicio con `ProductoPayload`.
+- En la prueba manual, el mensaje del 409 seguía a la vista después de pasar a "Editar
+  manualmente" o de volver a la automática. Ahora cambiar de modo limpia ese error, y el test del
+  409 lo comprueba.
+- A pedido del usuario, después de la prueba manual, los botones "Editar manualmente" / "Volver a
+  automática" (grandes, estorbaban) se reemplazaron por un check "Denominación automática", con el
+  mismo estilo que el de Stock Crítico. La prueba manual de más abajo se hizo con los botones; el
+  check quedó cubierto por los tests.
+- También a pedido del usuario, el subtítulo de la edición de producto pasó de "Sólo puede
+  visualizarse, no modificarse." (obsoleto: el formulario sí permite modificar) a "Ingrese los
+  datos". El formulario de Marca conserva el texto viejo.
+
+### Impacto
+
+- Nuevos: `producto/domain/denominacion-producto.ts` y su test.
+- Modificados: `producto/utils/registrar-actualizar-producto.tsx` (vista previa, botones de modo,
+  flag por defecto en el alta, 409 y registro de la marca y la línea elegidas),
+  `producto/interfaces/interfaces-validaciones-producto.tsx` (`generarDenominacionAutomatica`,
+  esquema condicional, `armarPayloadProducto` y `ProductoPayload`),
+  `producto/services/producto-service.tsx` (tipo del payload) y
+  `producto/utils/registrar-actualizar-producto.test.tsx`.
+- **Contrato:** sin cambios en el backend; se usa el flag de PA-031.
+
+### Verificación
+
+- `vitest run`: 21 archivos y 87 tests en verde (antes 20 y 70). Se ajustaron 3 tests del
+  formulario que escribían la denominación a mano: 2 ahora usan la automática y el de errores 400
+  pasa a manual. Tests nuevos: 7 en el formulario (vista previa y flag en el alta, la vista previa
+  sigue a la presentación, edición manual precargada, sin regeneración en modo manual, volver a
+  automática, 409 con el mensaje del backend y sin regeneración en la edición) y 10 en
+  `denominacion-producto.test.ts` (vista previa y payload).
+- `tsc --noEmit -p tsconfig.app.json`: 125 errores antes y después, todos previos.
+- ESLint sobre los archivos tocados: sin errores nuevos. Quedan las 4 advertencias
+  `exhaustive-deps` del formulario y el `no-useless-catch` de `producto-service.tsx`, todos previos.
+- `vite build`: correcto.
+- Prueba manual en el navegador contra el backend local de `develop` (con PA-031). Para que el
+  listado anduviera hubo que correr, con permiso del usuario, la migración pendiente
+  `CreateSuperLinea` en la base de Docker.
+  - Alta automática de CAROYENSE + ACEITES + BOTELLA 1000 ml: la vista previa mostró "CAROYENSE
+    ACEITES BOTELLA 1000 ml" y el backend guardó "CAROYENSE ACEITES BOTELLA 1 L" (la diferencia
+    esperada por la normalización).
+  - Repetir la combinación con 1 L dio 409, con el mensaje del backend y la sugerencia.
+  - "Editar manualmente" precargó el texto, y cambiar el envase a LATA no lo tocó. "Volver a
+    automática" mostró "CAROYENSE ACEITES LATA 1 L" y el alta se guardó con ese nombre: botella y
+    lata no chocan.
+  - En la edición, cambiar el envase a FRASCO conservó "CAROYENSE ACEITES BOTELLA 1 L".
+- Quedaron en la base local 2 productos de prueba: "CAROYENSE ACEITES BOTELLA 1 L" (ahora con
+  FRASCO 1 L) y "CAROYENSE ACEITES LATA 1 L".
+- **Sin verificar:** una denominación generada de más de 200 caracteres (la rechaza el backend y
+  el mensaje debería aparecer al pie, sin prueba propia) y la vista mobile del formulario en un
+  celular real; la prueba se hizo en el panel angosto del navegador.
+
+## [2026-09-25] Tests de cobertura — de 22,7 % a 84,1 % sobre producto + utilidades
+
+- **Tarjeta / CR:** PA-037 (análisis de cobertura); consume `test.md` (informe del 24/09)
+- **Herramienta:** Claude Sonnet 5 vía Claude Code
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+Síntesis: en base a `test.md`, aplicar los tests que faltan para llegar al 70 % de cobertura en el
+frontend; actualizar el repo, crear una rama y trabajar sin consultar. Las decisiones que sean del
+equipo se dejan en `DecisionTomadaClaude.md` (fuera del repo, en `/home/alex/src`).
+
+### Respuesta / propuesta de la IA
+Midió la base (22,7 % sobre `gestion-producto` + `utils`), priorizó según el informe §5.2 (permisos
+puros, servicios, pantallas de consulta, cambio masivo de precios, catálogos) y escribió tests de
+componentes con servicios y contextos mockeados. Al empezar, 10 tests ya fallaban en `develop`.
+
+### Decisión tomada
+- El 70 % se mide sobre producto + utilidades (propuesta del informe §5.5), con umbral en
+  `vitest.config.ts` y script `yarn test:cov`.
+- Se excluyeron del denominador el código muerto del informe §5.3 y 10 archivos que ningún import
+  alcanza desde `main.tsx` (verificado con el grafo de imports). Sin esas últimas exclusiones da 75,3 %.
+- Se corrigió el import perdido de `sinCamposPrecioDerivados` en `registrar-actualizar-producto.tsx`:
+  el alta de productos fallaba siempre en `develop`.
+
+### Qué se descartó y por qué
+- **70 % global del front:** irreal con tests unitarios (informe §5.5).
+- **Testear lista de precios y ajuste manual:** usan el modelo de precios viejo y endpoints que no
+  figuran en el backend actual; testearlos consolidaría un contrato muerto. Quedan en 0 % y cuentan
+  en la medición.
+- **Borrar el código muerto:** decisión del equipo; solo se sacó de la medición.
+- **Un test por pantalla de catálogo:** Marca, Línea, SuperLínea y Envase son casi idénticas; se usó
+  `describe.each`.
+
+### Modificaciones sobre lo generado
+- El primer intento de `vi.mock` con funciones locales falló por el hoisting; se movieron los dobles
+  a `src/test/` con fábricas asíncronas.
+- Un test de `SuperlineasSelector` entraba en bucle de renders por llamar `setError` durante el render;
+  pasó a un efecto.
+- Dos tests viejos de denominación automática se ajustaron al payload real (`generarDenominacionAutomatica`
+  false / `denominacion` vacía con la automática).
+
+### Impacto
+- Nuevos: 13 archivos de test y 3 dobles en `src/test/` (`mock-tabla`, `mock-select`, `mock-consultar`).
+- Modificados: `vitest.config.ts`, `package.json` (`test:cov`, `@vitest/coverage-v8@3.2.7`), `yarn.lock`,
+  `.gitignore` (`coverage/`), `registrar-actualizar-producto.tsx` (un import) y su test.
+- Backend, contrato y migraciones: sin cambios.
+
+### Verificación
+- `vitest run`: 34 archivos y 304 tests en verde (antes 21 y 87, con 10 en rojo).
+- `yarn test:cov`: 84,1 % de statements/lines, 90,1 % de ramas, 83,5 % de funciones sobre el alcance.
+- `tsc --noEmit`: 124 errores (125 en `develop`), ninguno de los tests nuevos. `vite build`: correcto.
+- **Sin verificar:** navegador real; las pantallas se probaron solo en jsdom.

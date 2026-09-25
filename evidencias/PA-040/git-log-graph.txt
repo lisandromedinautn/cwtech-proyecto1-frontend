@@ -1,0 +1,193 @@
+*   97690e8 (origin/develop, develop) Merge pull request #26 from lisandromedinautn/unificacion-testing-PA-053-PA-055
+|\  
+| * f93cc8a (origin/unificacion-testing-PA-053-PA-055) docs(ia): registro la unificación de testing, PA-053 y PA-055
+| *   64f2e58 Merge branch 'PA-055-Comprobar-soft-delete-de-la-lista-de-productos' into unificacion-testing-PA-053-PA-055
+| |\  
+| | *   80a9e5c Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+| | |\  
+| | * | f6ec285 docs(ia): registro la decisión de PA-055
+| | * | 9c5636d test(productos): cubro la vista de productos eliminados
+| | * | 75d1a4b feat(auditoria): muestro quién eliminó el registro en lugar de la actualización
+| | * | 5df04bf feat(productos): permito mostrar los productos eliminados
+| | * | 15cba45 fix(productos): evito que el aviso del borrado desaparezca al instante
+| | * |   ef0b248 Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+| | |\ \  
+| | * | | ded5f50 Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+| |/| | | 
+|/| | | | 
+| * | | |   e7af842 Merge branch 'PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto' into unificacion-testing-PA-053-PA-055
+| |\ \ \ \  
+| | * \ \ \   fc5bf23 Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+| | |\ \ \ \  
+| | | | |_|/  
+| | | |/| |   
+| | * | | | 9b1be48 docs(ia): registro la decisión de PA-053
+| | * | | | d3e8b00 fix(auditoria): muestro la modificación solo si realmente la hubo
+| | * | | | eafe911 feat(productos): muestro el responsable en el historial de precios
+| | * | | |   5cdcc54 Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+| | |\ \ \ \  
+| | | | |_|/  
+| | | |/| |   
+| | * | | | b32bf91 Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+| |/| | | | 
+|/| | | |/  
+| | | |/|   
+| | |/| |   
+| * | | | 23ba174 Merge branch 'Pa-020-Testing' into unificacion-testing-PA-053-PA-055
+|/| | | | 
+| | |_|/  
+| |/| |   
+| * | | 26124b1 (origin/Pa-020-Testing) docs(ia): registro el import perdido de textoPresentacion
+| | |/  
+| |/|   
+| * | 8b20130 fix(productos): restauro el import de textoPresentacion en el listado
+| |/  
+| * 7d9f2dd docs(ia): registro la integración de develop y main en testing
+| * 027825b fix(auth): restauro el import de useConfirmation en PrivateRoute
+| *   aeeb277 Merge branch 'main' into Pa-020-Testing
+| |\  
+| | *   a315d9e (HEAD -> main, origin/main, origin/HEAD) Release 22/09/2026
+| | |\  
+| | * \   60637c7 Release 21/09/2026
+| | |\ \  
+| * | \ \   f808078 Merge branch 'develop' into Pa-020-Testing
+| |\ \ \ \  
+| |/ / / /  
+|/| | | |   
+* | | | |   b0c058d Merge pull request #25 from lisandromedinautn/PA-051-Implementar-bajoMinimo
+|\ \ \ \ \  
+| |_|_|_|/  
+|/| | | |   
+| * | | |   3b8dd1b (origin/PA-051-Implementar-bajoMinimo) Merge branch 'develop' into PA-051-Implementar-bajoMinimo
+| |\ \ \ \  
+| |/ / / /  
+|/| | | |   
+* | | | |   9e263f1 Merge pull request #23 from lisandromedinautn/PA-025-Incorporar-Presentacion-en-frontend-CR-002
+|\ \ \ \ \  
+| |_|_|_|/  
+|/| | | |   
+| * | | | f4fa904 fix(productos): tabla ahora la puedo ver en mi compu
+| * | | | 3659052 feat: Presentacion ABM y en producto
+|/ / / /  
+* | | |   01d7b2b Merge branch 'main' into develop
+|\ \ \ \  
+| | |_|/  
+| |/| |   
+| * | |   00875b7 Release 12/09/2026
+| |\ \ \  
+| * \ \ \   5f5d55a PA-020 — Corregir PrivateRoute y sesión frontend
+| |\ \ \ \  
+| | * | | | 94aad66 PA-020 — Corregir PrivateRoute y sesión frontend
+| * | | | |   f0e1ef6 Release: actualizar main desde develop (12/09/2026)
+| |\ \ \ \ \  
+| | |/ / / /  
+| |/| | | |   
+* | | | | |   5b1397f PA-049: corrijo el fondo del select de SuperLínea
+|\ \ \ \ \ \  
+| * \ \ \ \ \   737a373 Merge branch 'develop' into bugfix/PA-049-fix-background-color-select-admin-super-linea
+| |\ \ \ \ \ \  
+| |/ / / / / /  
+|/| | | | | |   
+| * | | | | | 33274b1 fix(superlinea): agrego fondo al select
+| | | | | * | 46cf6bd Actualizo duración de la notificacion
+| | | | | * | 0427ce2 feat/PA-051-implementacion-bajoMinimo
+| | | | | | *   a35d1be PA-020 — Corregir filtro exacto de productos
+| | | | | | |\  
+| | | | | | | * 115bff5 docs(ia): registro la decisión del filtro exacto de productos
+| | | | | | | * 6c1e4cc fix(productos): evito que la búsqueda quede cargando ante un error
+| | | | | | |/  
+| | | | | | * de7deab chore: actualizo yarn.lock
+| | | | | | * 8043db2 chore: ignoro package-lock.json
+| | | | | | | *   b977394 (origin/PA-021-—-Revisar-configuración-y-filtros-frontend) Merge branch 'develop' into PA-021-—-Revisar-configuración-y-filtros-frontend
+| | | | | | | |\  
+| |_|_|_|_|_|_|/  
+|/| | | | | | |   
+* | | | | | | |   7adfaff PA-050: añado columna SuperLínea en admin de líneas
+|\ \ \ \ \ \ \ \  
+| |/ / / / / / /  
+|/| | | | | | |   
+| * | | | | | | efed8b1 feat(lineas): agrego columna de SuperLínea
+|/ / / / / / /  
+* | | | | | |   d1f902b Merge branch 'develop' of github.com:lisandromedinautn/cwtech-proyecto0-frontend into develop
+|\ \ \ \ \ \ \  
+| * \ \ \ \ \ \   455a4ec Pa-020-Testing
+| |\ \ \ \ \ \ \  
+| | | |_|_|_|/ /  
+| | |/| | | | |   
+| | * | | | | | fdb5d06 Pa-020-Testing
+| |/ / / / / /  
+* / / / / / / dfe3c22 hotfix(logo): logo CWTECH para todo el front
+|/ / / / / /  
+* | | | | |   94c5504 PA-028 — Incorporar SuperLínea en frontend (CR-003)
+|\ \ \ \ \ \  
+| |_|_|_|/ /  
+|/| | | | |   
+| * | | | | 9ec792f feat(superlinea): incorporar SuperLínea en frontend
+|/ / / / /  
+* | | | |   d1e365c PA-048 —  Refactor UI más intuitiva actualización masiva precios
+|\ \ \ \ \  
+| * | | | | 033c260 feat(precios): exijo previsualización antes de guardar
+| * | | | | 0d4210f feat(core): nombre del equipo + logo
+| * | | | | 1ec23a8 chore(docs): elimino entrada innecesaria
+| * | | | | c3e58b2 feat(precios): reorganizo actualización masiva de precios
+* | | | | |   b4e08d2 Merge pull request #13 from lisandromedinautn/PA-019-Mostrar-historial-de-precios-frontend
+|\ \ \ \ \ \  
+| |/ / / / /  
+|/| | | | |   
+| * | | | | 50981ba feat: consulta historial de precios de un producto
+|/ / / / /  
+* | | | |   5cbda1a PA-013 — Alinear validaciones y errores en frontend
+|\ \ \ \ \  
+| * | | | | 0842ad1 test(productos): corrijo el mock del formulario
+| * | | | | da9bbf8 test(errores): verifico feedback del backend
+| * | | | | 4a9613a feat(formularios): alineo feedback de API
+| * | | | | 2e35862 feat(errores): normalizo errores HTTP
+* | | | | |   bc5805d Merge pull request #11 from lisandromedinautn/PA-016-implementar-actualizacion-masiva-de-precios-backend
+|\ \ \ \ \ \  
+| |/ / / / /  
+|/| | | | |   
+| * | | | | e728f9c PA-047 —  Frontend para dirigirse a la actualización masiva de precios
+| | | | | * 222ee12 PA-021 — Revisar configuración y filtros frontend
+| |_|_|_|/  
+|/| | | |   
+* | | | | 3b4d2e9 Merge pull request #10 from lisandromedinautn/PA-016-implementar-actualizacion-masiva-de-precios-backend
+|\| | | | 
+| * | | | 27a17f7 feat:PA-016-Actualización masiva de precio
+| * | | | 6c0684f cambios en la tabla
+* | | | | d2a4519 docs: agregar guía de trazabilidad para agentes IA (CLAUDE.md + DECISIONES-IA.md)
+| |_|_|/  
+|/| | |   
+* | | |   ab7e975 PA-007 — Implementar flujo de ajuste de stock en frontend
+|\ \ \ \  
+| * | | | d3996b1 feat(stock): implemento el flujo de ajuste manual
+| |/ / /  
+* | | |   cd7e7a7 PA-015 — Corregir filtro por proveedor
+|\ \ \ \  
+| * | | | 9898c80 feat:pa-015-filtro-proveedor
+* | | | |   9966397 PA-011 — Definir matriz común de validaciones
+|\ \ \ \ \  
+| |_|/ / /  
+|/| | | |   
+| * | | | 789fc9c fix(validaciones): acotar CUIT de Cliente/Proveedor a 11 digitos
+| | |/ /  
+| |/| |   
+* | | | 187ed9f chore: ignoro mis carpetas de opencode
+| |_|/  
+|/| |   
+* | |   bc47d7d PA-003: Adaptar frontend a la política de precio
+|\ \ \  
+| |_|/  
+|/| |   
+| * | 0f737e4 test(producto): cubro flujo de precio derivado
+| * | af62d17 feat(producto): adapto formulario a política de precio
+|/ /  
+* |   1519448 test: configuro baseline de tests frontend
+|\ \  
+| |/  
+|/|   
+| * cdb2597 test: configuro baseline de tests frontend
+|/  
+* b7ae649 docs: agrego informacion inicial del sistema
+* 63d57ab fix: Fix de README.md
+* e909f05 Update README.md
+* 02d36a5 inicial

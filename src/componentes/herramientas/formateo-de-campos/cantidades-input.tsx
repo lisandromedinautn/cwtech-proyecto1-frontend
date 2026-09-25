@@ -37,6 +37,7 @@ const CantidadesInput: React.FC<CantidadesInputProps> = ({
       </Label>
       <div className="relative">
         <NumericFormat
+          id={name}
           thousandSeparator="."
           getInputRef={inputRef}
           onKeyDown={onKeyDown}

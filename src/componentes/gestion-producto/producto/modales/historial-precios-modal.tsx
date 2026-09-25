@@ -110,6 +110,9 @@ export default function HistorialPreciosModal({ producto, onClose }: Props) {
                   <th scope="col" className="px-3 py-2 text-left font-medium text-gray-700">
                     Motivo
                   </th>
+                  <th scope="col" className="px-3 py-2 text-left font-medium text-gray-700">
+                    Responsable
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -125,6 +128,9 @@ export default function HistorialPreciosModal({ producto, onClose }: Props) {
                       {formatPrice(cambio.precioNuevo, "ARS")}
                     </td>
                     <td className="px-3 py-2 text-gray-700">{cambio.motivo}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-gray-700">
+                      {cambio.usuarioDenominacion || "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
