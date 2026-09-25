@@ -1053,3 +1053,57 @@ denominación repetida.
 - **Sin verificar:** una denominación generada de más de 200 caracteres (la rechaza el backend y
   el mensaje debería aparecer al pie, sin prueba propia) y la vista mobile del formulario en un
   celular real; la prueba se hizo en el panel angosto del navegador.
+
+## [2026-09-25] Tests de cobertura — de 22,7 % a 84,1 % sobre producto + utilidades
+
+- **Tarjeta / CR:** PA-037 (análisis de cobertura); consume `test.md` (informe del 24/09)
+- **Herramienta:** Claude Sonnet 5 vía Claude Code
+- **Autor/a que condujo la sesión:** —
+- **Link a la conversación:** no disponible (CLI)
+
+### Prompt
+Síntesis: en base a `test.md`, aplicar los tests que faltan para llegar al 70 % de cobertura en el
+frontend; actualizar el repo, crear una rama y trabajar sin consultar. Las decisiones que sean del
+equipo se dejan en `DecisionTomadaClaude.md` (fuera del repo, en `/home/alex/src`).
+
+### Respuesta / propuesta de la IA
+Midió la base (22,7 % sobre `gestion-producto` + `utils`), priorizó según el informe §5.2 (permisos
+puros, servicios, pantallas de consulta, cambio masivo de precios, catálogos) y escribió tests de
+componentes con servicios y contextos mockeados. Al empezar, 10 tests ya fallaban en `develop`.
+
+### Decisión tomada
+- El 70 % se mide sobre producto + utilidades (propuesta del informe §5.5), con umbral en
+  `vitest.config.ts` y script `yarn test:cov`.
+- Se excluyeron del denominador el código muerto del informe §5.3 y 10 archivos que ningún import
+  alcanza desde `main.tsx` (verificado con el grafo de imports). Sin esas últimas exclusiones da 75,3 %.
+- Se corrigió el import perdido de `sinCamposPrecioDerivados` en `registrar-actualizar-producto.tsx`:
+  el alta de productos fallaba siempre en `develop`.
+
+### Qué se descartó y por qué
+- **70 % global del front:** irreal con tests unitarios (informe §5.5).
+- **Testear lista de precios y ajuste manual:** usan el modelo de precios viejo y endpoints que no
+  figuran en el backend actual; testearlos consolidaría un contrato muerto. Quedan en 0 % y cuentan
+  en la medición.
+- **Borrar el código muerto:** decisión del equipo; solo se sacó de la medición.
+- **Un test por pantalla de catálogo:** Marca, Línea, SuperLínea y Envase son casi idénticas; se usó
+  `describe.each`.
+
+### Modificaciones sobre lo generado
+- El primer intento de `vi.mock` con funciones locales falló por el hoisting; se movieron los dobles
+  a `src/test/` con fábricas asíncronas.
+- Un test de `SuperlineasSelector` entraba en bucle de renders por llamar `setError` durante el render;
+  pasó a un efecto.
+- Dos tests viejos de denominación automática se ajustaron al payload real (`generarDenominacionAutomatica`
+  false / `denominacion` vacía con la automática).
+
+### Impacto
+- Nuevos: 13 archivos de test y 3 dobles en `src/test/` (`mock-tabla`, `mock-select`, `mock-consultar`).
+- Modificados: `vitest.config.ts`, `package.json` (`test:cov`, `@vitest/coverage-v8@3.2.7`), `yarn.lock`,
+  `.gitignore` (`coverage/`), `registrar-actualizar-producto.tsx` (un import) y su test.
+- Backend, contrato y migraciones: sin cambios.
+
+### Verificación
+- `vitest run`: 34 archivos y 304 tests en verde (antes 21 y 87, con 10 en rojo).
+- `yarn test:cov`: 84,1 % de statements/lines, 90,1 % de ramas, 83,5 % de funciones sobre el alcance.
+- `tsc --noEmit`: 124 errores (125 en `develop`), ninguno de los tests nuevos. `vite build`: correcto.
+- **Sin verificar:** navegador real; las pantallas se probaron solo en jsdom.

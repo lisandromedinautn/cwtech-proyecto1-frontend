@@ -22,7 +22,7 @@ import RegistrarActualizarMarcaForm from "../../marca/utils/registrar-actualizar
 import { ItemProveedor } from "../../../../interfaces/gestion-producto/producto/interfaces-item-proveedor";
 import { SelectSublinea } from "../../../../interfaces/gestion-producto/sublinea/interfaces-sublinea";
 import { ItemsProveedorEnPayload } from "../interfaces/interfaces-validaciones-item-proveedor";
-import { armarPayloadProducto, FormValues, schema, transformData, transformarItemsProdAlternativo } from "../interfaces/interfaces-validaciones-producto";
+import { armarPayloadProducto, FormValues, schema, sinCamposPrecioDerivados, transformData, transformarItemsProdAlternativo } from "../interfaces/interfaces-validaciones-producto";
 import LineasSelector from "../componentes/configuracion/lineas-selector";
 import EncabezadoFormularios from "../../../ui/encabezadoFormularios";
 import MarcasSelector from "../componentes/configuracion/marcas-selector";

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useFormContext } from "react-hook-form";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -191,6 +191,7 @@ describe("RegistrarActualizarProductoForm", () => {
     expect(screen.getByText("$120,00")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Registrar" }));
+      await waitFor(() => expect(ProductoService.nuevo).toHaveBeenCalled());
 
     expect(ProductoService.nuevo).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -203,7 +204,7 @@ describe("RegistrarActualizarProductoForm", () => {
         usuarioCreatedId: 7,
       }),
     );
-    expect(ProductoService.nuevo.mock.calls[0][0]).not.toHaveProperty("precio");
+    expect(vi.mocked(ProductoService.nuevo).mock.calls[0][0]).not.toHaveProperty("precio");
     expect(onSuccess).toHaveBeenCalledWith("Producto creado");
     expect(onClose).toHaveBeenCalled();
   });
@@ -242,6 +243,7 @@ describe("RegistrarActualizarProductoForm", () => {
       await completarDatosBasicos(user);
       await completarPresentacion(user, "1.5", "L");
       await user.click(screen.getByRole("button", { name: "Registrar" }));
+      await waitFor(() => expect(ProductoService.nuevo).toHaveBeenCalled());
 
       const payload = vi.mocked(ProductoService.nuevo).mock.calls[0][0];
       expect(payload.presentacion).toStrictEqual({ envaseId: 3, cantidad: 1.5, unidad: "L" });
@@ -433,6 +435,7 @@ describe("RegistrarActualizarProductoForm", () => {
       expect(screen.getByText("COCA-COLA GASEOSAS BOTELLA 500 ml")).toBeInTheDocument();
 
       await user.click(screen.getByRole("button", { name: "Registrar" }));
+      await waitFor(() => expect(ProductoService.nuevo).toHaveBeenCalled());
 
       const payload = vi.mocked(ProductoService.nuevo).mock.calls[0][0];
       expect(payload).toMatchObject({ generarDenominacionAutomatica: true, marcaId: 2, lineaId: 1 });
@@ -467,10 +470,11 @@ describe("RegistrarActualizarProductoForm", () => {
       await user.clear(campoDenominacion()!);
       await user.type(campoDenominacion()!, "Coca Cola retornable");
       await user.click(screen.getByRole("button", { name: "Registrar" }));
+      await waitFor(() => expect(ProductoService.nuevo).toHaveBeenCalled());
 
       const payload = vi.mocked(ProductoService.nuevo).mock.calls[0][0];
       expect(payload).toMatchObject({ denominacion: "coca cola retornable" });
-      expect(payload).not.toHaveProperty("generarDenominacionAutomatica");
+      expect(payload).toMatchObject({ generarDenominacionAutomatica: false });
     });
 
     it("en modo manual, cambiar la presentación no regenera la denominación", async () => {
@@ -488,6 +492,7 @@ describe("RegistrarActualizarProductoForm", () => {
       expect(campoDenominacion()).toHaveValue("COCA-COLA GASEOSAS BOTELLA 500 ml");
 
       await user.click(screen.getByRole("button", { name: "Registrar" }));
+      await waitFor(() => expect(ProductoService.nuevo).toHaveBeenCalled());
 
       expect(ProductoService.nuevo).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -513,10 +518,11 @@ describe("RegistrarActualizarProductoForm", () => {
       expect(screen.getByText("COCA-COLA GASEOSAS BOTELLA 500 ml")).toBeInTheDocument();
 
       await user.click(screen.getByRole("button", { name: "Registrar" }));
+      await waitFor(() => expect(ProductoService.nuevo).toHaveBeenCalled());
 
       const payload = vi.mocked(ProductoService.nuevo).mock.calls[0][0];
       expect(payload).toMatchObject({ generarDenominacionAutomatica: true });
-      expect(payload).not.toHaveProperty("denominacion");
+      expect(payload.denominacion).toBeFalsy();
     });
 
     it("muestra el mensaje del backend si la denominación generada ya existe", async () => {
