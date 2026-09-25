@@ -59,6 +59,7 @@ export default function ConsultarProductos() {
   const [modalAbierto, setModalAbierto] = useState<boolean>(false);
   const [productoNotificacionSeleccionado, setProductoNotificacionSeleccionado] = useState<ProductoNotificacion | null>(null);
   const notificadosStockCriticoRef = useRef<Set<number>>(new Set());
+  const productosEliminadosRef = useRef<Set<number>>(new Set());
   const usuarioId = getUsuarioId();
   const { configuracion } = useConfiguracionSistema();
   const [codigo, setCodigo] = useState<string>("");
@@ -99,6 +100,17 @@ export default function ConsultarProductos() {
   const { alerts, addAlert, removeAlert } = useAlerts();
   const { agregarNotificacion } = useNotificaciones();
   const { showConfirmation, AlertasConfirmacion } = useConfirmation();
+
+  const excluirProductosEliminados = (items: ConsultarProducto[]) =>
+    items.filter((producto) => !productosEliminadosRef.current.has(Number(producto.id)));
+
+  const aplicarResultados = (resultado: { data: ConsultarProducto[]; total: number }) => {
+    const data = excluirProductosEliminados(resultado.data);
+    const eliminadosEnRespuesta = resultado.data.length - data.length;
+
+    setProductos(data);
+    setEntidadesTotales(Math.max(0, resultado.total - eliminadosEnRespuesta));
+  };
 
     // Contexto de catálogos
   const {
@@ -353,11 +365,8 @@ export default function ConsultarProductos() {
     let response: ResponsePost;
     try {
       response = await ProductoService.eliminar(id, usuarioId);
-      setProductos(
-        mostrarEliminados
-          ? productos.map((producto) => (producto.id === id ? { ...producto, eliminado: true } : producto))
-          : productos.filter((producto) => producto.id !== id),
-      );
+      productosEliminadosRef.current.add(id);
+      setProductos((productosActuales) => productosActuales.filter((producto) => producto.id !== id));
       addAlert({
         type: TipoAlerta.SUCCESS,
         title: TituloAlerta.SUCCESS,
@@ -365,6 +374,7 @@ export default function ConsultarProductos() {
         autoClose: true,
         duration: 3000,
       });
+      await handleBuscarProductos();
     } catch (err: unknown) {
       const apiError = normalizeApiError(err);
       addAlert({
@@ -469,7 +479,26 @@ export default function ConsultarProductos() {
       duration: 3000,
     });
 
-    await handleBuscarProductos();
+    setLoading(true);
+
+    const filtrosConPaginacion = {
+      denominacion: valoresFiltros.denominacion,
+      codigoProveedor: valoresFiltros.codigoProveedor,
+      codigoReferencia: valoresFiltros.codigoReferencia,
+      lineaId: valoresFiltros.lineaId,
+      marcaId: valoresFiltros.marcaId,
+      proveedorId: valoresFiltros.proveedorId,
+      conStock: valoresFiltros.conStock,
+      codReferenciaExacto: valoresFiltros.codReferenciaExacto,
+      codProveedorExacto: valoresFiltros.codProveedorExacto,
+      skip: skip,
+      take: take,
+    };
+
+    const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
+
+    aplicarResultados(productosFiltrados);
+    setLoading(false);
   };
 
   const handleActualizarSuccess = async (mensajeAlerta: string) => {
@@ -516,16 +545,9 @@ export default function ConsultarProductos() {
     }
   };
 
-  const notificarErrorBusqueda = (err: unknown) => {
-    setProductos([]);
-    setEntidadesTotales(0);
-    addAlert({
-      type: TipoAlerta.ERROR,
-      title: TituloAlerta.ERROR,
-      message: getApiErrorMessage(normalizeApiError(err)),
-      autoClose: true,
-      duration: 3000,
-    });
+    const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
+    aplicarResultados(productosFiltrados);
+    setLoading(false);
   };
 
   const handleBuscarProductosRapido = async (botonBuscar?: boolean) => {
@@ -545,16 +567,9 @@ export default function ConsultarProductos() {
       take: take,
     };
 
-    try {
-      const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
-      if (requestId !== busquedaRequestId.current) return;
-      setProductos(productosFiltrados.data);
-      setEntidadesTotales(productosFiltrados.total);
-    } catch (err: unknown) {
-      notificarErrorBusqueda(err);
-    } finally {
-      setLoading(false);
-    }
+    const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
+    aplicarResultados(productosFiltrados);
+    setLoading(false);
   };
 
   // MANEJO DE PAGINACION ===========================================
