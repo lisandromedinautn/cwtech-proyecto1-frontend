@@ -142,7 +142,13 @@ export const schema = (
     codigoProveedor: yup.string().optional().nullable(),
     codigoReferencia: yup.string().optional().nullable(),
     codigoBarra: yup.string().optional().max(255, "Máximo 255 caracteres.").nullable(),
-    stock: yup.number().optional().nullable(),
+    stock: yup
+      .number()
+      .typeError("El stock debe ser un valor numérico.")
+      .integer("El stock debe ser un número entero.")
+      .min(0, "El stock no puede ser negativo.")
+      .optional()
+      .nullable(),
     costo: yup.number().typeError("El costo debe ser un valor númerico").required("El costo es obligatorio").min(0,"El costo debe ser mayor o igual a 0"),
     margen: yup.number().typeError("El margen debe ser un valor numérico").min(0,"El margen debe ser mayor o igual a 0").optional().nullable(),
     /* costoEnDolar: yup.boolean().optional().nullable(),

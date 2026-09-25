@@ -235,7 +235,8 @@ export default function RegistrarActualizarProductoForm({
         response = await ProductoService.actualizar(producto.id, payload);
       } else {
         const payload = {
-          ...armarPayloadProducto(formData),
+          ...sinCamposPrecioDerivados(formData),
+          ...(formData.stock != null ? { stock: formData.stock } : {}),
           usuarioCreatedId: usuarioId,
         };
 
@@ -540,15 +541,13 @@ export default function RegistrarActualizarProductoForm({
                   </div>
 
                   <div className="flex-1 min-w-[120px]">
-                    {producto ? (
-                      <CantidadesInput
-                        name={`stock`}
-                        label="Stock"
-                        value={stock || 0}
-                        onChange={(value) => setValue(`stock`, Number(value))}
-                        disabled={true}
-                      />
-                    ) : null}
+                    <CantidadesInput
+                      name={`stock`}
+                      label={producto ? "Stock" : "Stock inicial"}
+                      value={stock || 0}
+                      onChange={(value) => setValue(`stock`, Number(value))}
+                      disabled={producto ? true : false}
+                    />
                   </div>
                 </div>
 
