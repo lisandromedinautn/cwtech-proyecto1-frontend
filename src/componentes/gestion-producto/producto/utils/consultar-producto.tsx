@@ -479,26 +479,7 @@ export default function ConsultarProductos() {
       duration: 3000,
     });
 
-    setLoading(true);
-
-    const filtrosConPaginacion = {
-      denominacion: valoresFiltros.denominacion,
-      codigoProveedor: valoresFiltros.codigoProveedor,
-      codigoReferencia: valoresFiltros.codigoReferencia,
-      lineaId: valoresFiltros.lineaId,
-      marcaId: valoresFiltros.marcaId,
-      proveedorId: valoresFiltros.proveedorId,
-      conStock: valoresFiltros.conStock,
-      codReferenciaExacto: valoresFiltros.codReferenciaExacto,
-      codProveedorExacto: valoresFiltros.codProveedorExacto,
-      skip: skip,
-      take: take,
-    };
-
-    const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
-
-    aplicarResultados(productosFiltrados);
-    setLoading(false);
+    await handleBuscarProductos();
   };
 
   const handleActualizarSuccess = async (mensajeAlerta: string) => {
@@ -545,9 +526,16 @@ export default function ConsultarProductos() {
     }
   };
 
-    const productosFiltrados = await ProductoService.obtener(filtrosConPaginacion);
-    aplicarResultados(productosFiltrados);
-    setLoading(false);
+  const notificarErrorBusqueda = (err: unknown) => {
+    setProductos([]);
+    setEntidadesTotales(0);
+    addAlert({
+      type: TipoAlerta.ERROR,
+      title: TituloAlerta.ERROR,
+      message: getApiErrorMessage(normalizeApiError(err)),
+      autoClose: true,
+      duration: 3000,
+    });
   };
 
   const handleBuscarProductosRapido = async (botonBuscar?: boolean) => {
@@ -567,9 +555,15 @@ export default function ConsultarProductos() {
       take: take,
     };
 
-    const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
-    aplicarResultados(productosFiltrados);
-    setLoading(false);
+    try {
+      const productosFiltrados = await ProductoService.obtenerRapido(filtrosConPaginacion);
+      aplicarResultados(productosFiltrados);
+    } catch (err: unknown) {
+      if (requestId !== busquedaRequestId.current) return;
+      notificarErrorBusqueda(err);
+    } finally {
+      if (requestId === busquedaRequestId.current) setLoading(false);
+    }
   };
 
   // MANEJO DE PAGINACION ===========================================
