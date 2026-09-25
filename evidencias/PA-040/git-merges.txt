@@ -1,0 +1,39 @@
+97690e8 | 2026-09-24 | lisandromedina | Merge pull request #26 from lisandromedinautn/unificacion-testing-PA-053-PA-055
+64f2e58 | 2026-09-23 | PIPICBA | Merge branch 'PA-055-Comprobar-soft-delete-de-la-lista-de-productos' into unificacion-testing-PA-053-PA-055
+e7af842 | 2026-09-23 | PIPICBA | Merge branch 'PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto' into unificacion-testing-PA-053-PA-055
+23ba174 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into unificacion-testing-PA-053-PA-055
+80a9e5c | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+fc5bf23 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+ef0b248 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+5cdcc54 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+ded5f50 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-055-Comprobar-soft-delete-de-la-lista-de-productos
+b32bf91 | 2026-09-23 | PIPICBA | Merge branch 'Pa-020-Testing' into PA-053-Actualizar-datos-de-visualizacion-en-detalles-del-producto
+aeeb277 | 2026-09-23 | PIPICBA | Merge branch 'main' into Pa-020-Testing
+f808078 | 2026-09-23 | PIPICBA | Merge branch 'develop' into Pa-020-Testing
+b0c058d | 2026-09-23 | Marti | Merge pull request #25 from lisandromedinautn/PA-051-Implementar-bajoMinimo
+3b8dd1b | 2026-09-23 | Marti | Merge branch 'develop' into PA-051-Implementar-bajoMinimo
+a35d1be | 2026-09-23 | PIPICBA | PA-020 — Corregir filtro exacto de productos
+a315d9e | 2026-09-22 | Julian Fermani | Release 22/09/2026
+9e263f1 | 2026-09-22 | UlisesFrancioni | Merge pull request #23 from lisandromedinautn/PA-025-Incorporar-Presentacion-en-frontend-CR-002
+60637c7 | 2026-09-21 | Julian Fermani | Release 21/09/2026
+01d7b2b | 2026-09-21 | Julian Fermani | Merge branch 'main' into develop
+5b1397f | 2026-09-21 | Ramiro Doglio | PA-049: corrijo el fondo del select de SuperLínea
+b977394 | 2026-09-21 | Ramiro Doglio | Merge branch 'develop' into PA-021-—-Revisar-configuración-y-filtros-frontend
+737a373 | 2026-09-21 | Julian Fermani | Merge branch 'develop' into bugfix/PA-049-fix-background-color-select-admin-super-linea
+7adfaff | 2026-09-21 | Julian Fermani | PA-050: añado columna SuperLínea en admin de líneas
+d1f902b | 2026-09-21 | Julian | Merge branch 'develop' of github.com:lisandromedinautn/cwtech-proyecto0-frontend into develop
+455a4ec | 2026-09-21 | Ignacio Fumero Zamudio | Pa-020-Testing
+94c5504 | 2026-09-21 | Julian Fermani | PA-028 — Incorporar SuperLínea en frontend (CR-003)
+d1e365c | 2026-09-18 | Julian Fermani | PA-048 —  Refactor UI más intuitiva actualización masiva precios
+b4e08d2 | 2026-09-18 | UlisesFrancioni | Merge pull request #13 from lisandromedinautn/PA-019-Mostrar-historial-de-precios-frontend
+5cbda1a | 2026-09-17 | Julian Fermani | PA-013 — Alinear validaciones y errores en frontend
+bc5805d | 2026-09-17 | Marti | Merge pull request #11 from lisandromedinautn/PA-016-implementar-actualizacion-masiva-de-precios-backend
+3b4d2e9 | 2026-09-16 | Marti | Merge pull request #10 from lisandromedinautn/PA-016-implementar-actualizacion-masiva-de-precios-backend
+00875b7 | 2026-09-14 | Julian Fermani | Release 12/09/2026
+5f5d55a | 2026-09-14 | Ignacio Fumero Zamudio | PA-020 — Corregir PrivateRoute y sesión frontend
+ab7e975 | 2026-09-14 | Julian Fermani | PA-007 — Implementar flujo de ajuste de stock en frontend
+cd7e7a7 | 2026-09-14 | Julian Fermani | PA-015 — Corregir filtro por proveedor
+9966397 | 2026-09-14 | Julian Fermani | PA-011 — Definir matriz común de validaciones
+f0e1ef6 | 2026-09-12 | Julian Fermani | Release: actualizar main desde develop (12/09/2026)
+bc47d7d | 2026-09-11 | Julian Fermani | PA-003: Adaptar frontend a la política de precio
+1519448 | 2026-09-07 | Julian Fermani | test: configuro baseline de tests frontend
