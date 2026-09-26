@@ -1,35 +1,23 @@
-import { jwtDecode } from "jwt-decode";
-import { Auditoria } from "../../../interfaces/generales/interfaces-generales";
+import { Auditoria, Rol } from "../../../interfaces/generales/interfaces-generales";
 import { Card } from "../../ui/Card";
-import { useEffect, useState } from "react";
-import UsuarioService from "../../gestion-usuario/usuario-service";
 import { Clock, Edit3, Info, Plus, Shield, Trash2, User } from "lucide-react";
 import { Badge } from "../../ui/Badge";
+import { getRoles } from "../../../utils/auth";
 
 interface InformacionAuditoriaProps {
   auditoria: Auditoria;
   onClose?: () => void;
 }
 
+// updatedAt se completa ya al crear el registro: solo hubo una modificación si
+// quedó un usuario de modificación o la fecha difiere de la de creación.
+const fueModificado = (auditoria: Auditoria): boolean =>
+  Boolean(auditoria.usuarioUpdated) ||
+  (Boolean(auditoria.updatedAt) && auditoria.updatedAt !== auditoria.createdAt);
+
 export default function InformacionAuditoria({ auditoria, onClose }: InformacionAuditoriaProps) {
-  const token = localStorage.getItem("Token");
-  const rolId = token ? jwtDecode<{ rolId: number }>(token).rolId : 0;
-  const [rol, setRol] = useState<string>("");
-
-  const fetchData = async () => {
-    try {
-      const roleResponse = await UsuarioService.obtenerRol(rolId);
-
-      const roleName = roleResponse?.data?.denominacion;
-
-      setRol(roleName || "Desconocido");
-    } catch (err: any) {
-      console.error("Error al obtener productos:", err);
-    }
-  };
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const esRoot = getRoles().includes(Rol.ROOT);
+  const modificado = fueModificado(auditoria);
 
   const getActionBadge = (type: "created" | "updated" | "deleted") => {
     const configs = {
@@ -53,7 +41,7 @@ export default function InformacionAuditoria({ auditoria, onClose }: Informacion
     return (
       <Badge variant="outline" className={`${config.color} flex items-center gap-1 px-2 py-1`}>
         <Icon size={12} />
-        {type === "created" ? "Creado" : type === "updated" ? "Actualizado" : "Eliminado"}
+        {type === "created" ? "Creado" : type === "updated" ? "Última modificación" : "Eliminado"}
       </Badge>
     );
   };
@@ -84,7 +72,7 @@ export default function InformacionAuditoria({ auditoria, onClose }: Informacion
         {/* Contenido */}
         <div className="p-6 space-y-6">
           {/* ID para usuarios Root */}
-          {rol === "Root" && (
+          {esRoot && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
               <div className="flex items-center gap-2 text-amber-800">
                 <Info size={16} />
@@ -109,8 +97,9 @@ export default function InformacionAuditoria({ auditoria, onClose }: Informacion
                 </div>
               </div>
 
-              {/* Actualización */}
-              {auditoria.updatedAt && (
+              {/* Última modificación: en un registro eliminado, updatedAt es la fecha de la
+                  baja, así que se reemplaza por el bloque de eliminación. */}
+              {modificado && !auditoria.deletedAt && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">{getActionBadge("updated")}</div>
@@ -130,8 +119,9 @@ export default function InformacionAuditoria({ auditoria, onClose }: Informacion
                     <div className="flex items-center gap-2">{getActionBadge("deleted")}</div>
                     <span className="text-sm text-slate-600">{auditoria.deletedAt}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-700">
+                  <div className="flex items-center gap-2 text-red-700">
                     <User size={14} />
+                    <span className="text-sm">Eliminado por</span>
                     <span className="text-sm font-medium">{auditoria.usuarioDeleted || "No especificado"}</span>
                   </div>
                 </div>
@@ -140,7 +130,7 @@ export default function InformacionAuditoria({ auditoria, onClose }: Informacion
           </div>
 
           {/* Estados sin datos */}
-          {!auditoria.updatedAt && !auditoria.deletedAt && (
+          {!modificado && !auditoria.deletedAt && (
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-center">
               <Clock size={24} className="mx-auto text-slate-400 mb-2" />
               <p className="text-slate-600 text-sm">Este registro no ha sido modificado desde su creación</p>

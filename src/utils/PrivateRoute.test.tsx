@@ -1,72 +1,113 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import PrivateRoute from './PrivateRoute';
+import { cleanup, render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { jwtDecode } from "jwt-decode";
+import PrivateRoute from "./PrivateRoute";
 
-const createJwt = (roles: number[]) => {
-  const encode = (value: unknown) =>
-    btoa(JSON.stringify(value))
-      .replace(/=/g, '')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_');
+// Mock determinista de jwtDecode
+vi.mock("jwt-decode", () => {
+  const jwtDecode = vi.fn((token: string) => {
+    const payload = token.split(".")[1];
 
-  return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({
-    sub: 1,
-    roles,
-    empresaId: 10,
-    puntoVentaId: 20,
-  })}.signature`;
+    if (!payload) {
+      throw new TypeError("InvalidTokenError");
+    }
+
+    return JSON.parse(
+      atob(payload.replace(/-/g, "+").replace(/_/g, "/")),
+    );
+  });
+
+  return { jwtDecode };
+});
+
+const crearToken = (payload: Record<string, unknown>): string => {
+  const enc = (obj: unknown) =>
+    btoa(JSON.stringify(obj))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+  return `${enc({ alg: "HS256", typ: "JWT" })}.${enc(payload)}.firma`;
 };
 
-const renderProtectedRoute = () =>
+const USUARIO_ADMIN = crearToken({
+  sub: 1,
+  roles: [1, 3],
+  empresaId: 10,
+  puntoVentaId: 20,
+});
+
+const USUARIO_SIN_PERMISO = crearToken({
+  sub: 9,
+  roles: [99],
+  empresaId: 10,
+  puntoVentaId: 20,
+});
+
+const renderConRuta = () =>
   render(
-    <MemoryRouter initialEntries={['/privada']}>
+    <MemoryRouter initialEntries={["/admin/producto"]}>
       <Routes>
-        <Route path="/login" element={<div>Pantalla de login</div>} />
+        <Route path="/login" element={<div>Página de Login</div>} />
         <Route path="/admin" element={<div>Panel de administración</div>} />
-        <Route element={<PrivateRoute allowedRoles={[1, 2]} />}>
-          <Route path="/privada" element={<div>Contenido privado</div>} />
+
+        <Route element={<PrivateRoute allowedRoles={[1, 3]} />}>
+          <Route
+            path="/admin/producto"
+            element={<div>Panel de Productos</div>}
+          />
         </Route>
       </Routes>
     </MemoryRouter>,
   );
 
-describe('PrivateRoute', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
+describe("PrivateRoute (SYS-010): guardia de rutas", () => {
   afterEach(() => {
     cleanup();
+    localStorage.removeItem("Token");
+    vi.clearAllMocks();
   });
 
-  it('redirige al login cuando no hay token', () => {
-    renderProtectedRoute();
+  it("sin token redirige a /login y NO intenta decodificar", () => {
+    localStorage.removeItem("Token");
 
-    expect(screen.getByText('Pantalla de login')).toBeInTheDocument();
+    renderConRuta();
+
+    expect(screen.getByText("Página de Login")).toBeInTheDocument();
+    expect(screen.queryByText("Panel de Productos")).not.toBeInTheDocument();
+    expect(jwtDecode).not.toHaveBeenCalled();
   });
 
-  it('redirige al login cuando el token es corrupto', () => {
-    localStorage.setItem('Token', 'token-corrupto');
+  it("con token válido y rol permitido permite acceder al contenido", () => {
+    localStorage.setItem("Token", USUARIO_ADMIN);
 
-    renderProtectedRoute();
+    renderConRuta();
 
-    expect(screen.getByText('Pantalla de login')).toBeInTheDocument();
+    expect(screen.getByText("Panel de Productos")).toBeInTheDocument();
+    expect(screen.queryByText("Página de Login")).not.toBeInTheDocument();
   });
 
-  it('redirige al admin cuando el usuario no tiene permiso', () => {
-    localStorage.setItem('Token', createJwt([99]));
+  it("con token corrupto falla de manera controlada y redirige a /login", () => {
+    localStorage.setItem("Token", "corrupto.no.es.jwt");
 
-    renderProtectedRoute();
+    renderConRuta();
 
-    expect(screen.getByText('Panel de administración')).toBeInTheDocument();
+    expect(screen.getByText("Página de Login")).toBeInTheDocument();
+    expect(screen.queryByText("Panel de Productos")).not.toBeInTheDocument();
   });
 
-  it('permite acceder cuando el usuario tiene permiso', () => {
-    localStorage.setItem('Token', createJwt([2]));
+  it("con token válido pero rol no permitido muestra la alerta controlada y no accede", async () => {
+    localStorage.setItem("Token", USUARIO_SIN_PERMISO);
 
-    renderProtectedRoute();
+    renderConRuta();
 
-    expect(screen.getByText('Contenido privado')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "No tienes permiso para acceder a esta sección.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByText("Panel de Productos")).not.toBeInTheDocument();
   });
 });

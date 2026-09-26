@@ -22,7 +22,7 @@ import RegistrarActualizarMarcaForm from "../../marca/utils/registrar-actualizar
 import { ItemProveedor } from "../../../../interfaces/gestion-producto/producto/interfaces-item-proveedor";
 import { SelectSublinea } from "../../../../interfaces/gestion-producto/sublinea/interfaces-sublinea";
 import { ItemsProveedorEnPayload } from "../interfaces/interfaces-validaciones-item-proveedor";
-import { armarPayloadProducto, FormValues, schema, transformData, transformarItemsProdAlternativo } from "../interfaces/interfaces-validaciones-producto";
+import { armarPayloadProducto, FormValues, schema, sinCamposPrecioDerivados, transformData, transformarItemsProdAlternativo } from "../interfaces/interfaces-validaciones-producto";
 import LineasSelector from "../componentes/configuracion/lineas-selector";
 import EncabezadoFormularios from "../../../ui/encabezadoFormularios";
 import MarcasSelector from "../componentes/configuracion/marcas-selector";
@@ -35,6 +35,7 @@ import EnvasePresentacionService from "../../envase-presentacion/services/envase
 import RegistrarActualizarEnvasePresentacionForm from "../../envase-presentacion/utils/registrar-actualizar-envase-presentacion";
 import type { SelectEnvasePresentacion } from "../../../../interfaces/gestion-producto/envase-presentacion/interfaces-envase-presentacion";
 import { presentacionDesdeProducto } from "../domain/presentacion-producto";
+import { vistaPreviaDenominacion } from "../domain/denominacion-producto";
 
 export default function RegistrarActualizarProductoForm({
   producto,
@@ -69,6 +70,8 @@ export default function RegistrarActualizarProductoForm({
       : {
           alicuotaIva: AlicuotaIva.ALICUOTA_21,
           margen: MARGEN_GENERAL,
+          // CR-005: en el alta, la denominación se genera por defecto.
+          generarDenominacionAutomatica: true,
         },
   });
 
@@ -78,6 +81,7 @@ export default function RegistrarActualizarProductoForm({
     setValue,
     watch,
     setError,
+    clearErrors,
   } = methods;
 
   console.log("estos son los errores", errors);
@@ -111,7 +115,17 @@ export default function RegistrarActualizarProductoForm({
   const costo = watch("costo") ?? 0;
   const margen = watch("margen");
   const precioEstimado = calcularPrecioEstimado(costo, margen);
-  
+
+  // CR-005: solo es una vista previa; el backend arma la denominación final.
+  const generarDenominacionAutomatica = !producto && watch("generarDenominacionAutomatica") === true;
+  const denominacionVistaPrevia = vistaPreviaDenominacion({
+    marca: selectedMarca?.denominacion,
+    linea: selectedLinea?.denominacion,
+    envase: selectedEnvase?.denominacion,
+    cantidad: watch("presentacion.cantidad"),
+    unidad: watch("presentacion.unidad"),
+  });
+
 
   //=============================== CONSTANTES PARA MOVIMIENTO ENTRE CAMPOS ==================================
   const denominacionProductoRef = useRef<HTMLInputElement>(null);
@@ -119,7 +133,6 @@ export default function RegistrarActualizarProductoForm({
   const observacionRef = useRef<HTMLInputElement>(null);
   const ubicacionRef = useRef<HTMLInputElement>(null);
   const selectTipoProductoRef = useRef<HTMLDivElement>(null);
-  const codigoBarraRef = useRef<HTMLInputElement>(null);
   const selectAlicuotaIvaRef = useRef<HTMLDivElement>(null);
   const precioOfertaRef = useRef<HTMLInputElement>(null);
   const denominacionLineaRef = useRef<HTMLInputElement>(null);
@@ -169,8 +182,6 @@ export default function RegistrarActualizarProductoForm({
           
           setValue("denominacion", producto.denominacion || "");
           setValue("observacion", producto.observacion || null);
-          setValue("codigoProveedor", producto.codigoProveedor || "");
-          setValue("codigoBarra", producto.codigoBarra || null);
           setValue("stock", producto.stock || 0);
           setValue("costo", producto.costo || 0);
           setValue("margen", producto.margen ?? null);
@@ -224,7 +235,8 @@ export default function RegistrarActualizarProductoForm({
         response = await ProductoService.actualizar(producto.id, payload);
       } else {
         const payload = {
-          ...armarPayloadProducto(formData),
+          ...sinCamposPrecioDerivados(formData),
+          ...(formData.stock != null ? { stock: formData.stock } : {}),
           usuarioCreatedId: usuarioId,
         };
 
@@ -236,14 +248,42 @@ export default function RegistrarActualizarProductoForm({
     } catch (error) {
       // Las reglas de la presentación las valida el backend: su mensaje se
       // muestra junto a los campos de la presentación.
-      const { code, message } = normalizeApiError(error);
+      const { code, message, statusCode } = normalizeApiError(error);
       if (code === "PRESENTACION_INVALIDA" || code === "PRESENTACION_REQUERIDA") {
         setError("presentacion", { type: "server", message });
+        return;
+      }
+      // Se muestra el mensaje del backend: el texto genérico de CONFLICTO
+      // ("El recurso fue modificado por otra operación.") no explica una
+      // denominación repetida. Con la automática, la salida es escribirla a mano.
+      if (statusCode === 409) {
+        const sugerencia = formData.generarDenominacionAutomatica
+          ? " Podés editar la denominación manualmente."
+          : "";
+        setError("root", { type: "server", message: `${message.replace(/\.?$/, ".")}${sugerencia}` });
         return;
       }
       const apiError = applyApiErrorToForm(error, setError, onNotify ?? (() => {}));
       if (apiError.statusCode === 404) await onRefresh?.();
     }
+  };
+
+  // CR-005: el usuario puede reemplazar la denominación generada. Arranca con
+  // la vista previa, y desde ahí los cambios de marca, línea o presentación ya
+  // no la tocan. Al cambiar de modo se limpia el error del último intento
+  // (por ejemplo, un 409 por la denominación generada).
+  const editarDenominacionManualmente = () => {
+    setValue("denominacion", denominacionVistaPrevia ?? "");
+    setValue("generarDenominacionAutomatica", false);
+    clearErrors("root");
+    setTimeout(() => denominacionProductoRef.current?.focus(), 0);
+  };
+
+  const volverADenominacionAutomatica = () => {
+    setValue("denominacion", "");
+    setValue("generarDenominacionAutomatica", true);
+    clearErrors("denominacion");
+    clearErrors("root");
   };
 
   const handleBuscarPorDenominacion = async (select: string) => {
@@ -336,7 +376,7 @@ export default function RegistrarActualizarProductoForm({
           title={producto ? "Producto" : "Registrar Producto"}
           subtitle={
             producto
-              ? "Sólo puede visualizarse, no modificarse."
+              ? "Ingrese los datos"
             : "Ingresa los datos."
           }
           icon={<Layers className="form-icon" />}
@@ -350,8 +390,27 @@ export default function RegistrarActualizarProductoForm({
               {/* Primera fila */}
               <div className="flex flex-col w-full gap-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 col-span-full">
-                  <div className="col-span-full flex items-end gap-2">
-                    <div className="flex-1">
+                  <div className="col-span-full flex flex-col gap-1">
+                    {generarDenominacionAutomatica ? (
+                      <div className="space-y-1 sm:space-y-2">
+                        <label className="label-base" htmlFor="denominacion-automatica">Denominación</label>
+                        <output
+                          id="denominacion-automatica"
+                          className={`block w-full p-2 border border-gray-300 bg-gray-100 rounded-md ${
+                            denominacionVistaPrevia ? "text-black" : "text-gray-500 italic"
+                          }`}
+                        >
+                          {denominacionVistaPrevia ?? "Se genera al elegir la marca, la línea y la presentación."}
+                        </output>
+                        <small className="block text-gray-500">
+                          Vista previa: se genera automáticamente con Marca + Línea + Presentación y el sistema
+                          define el nombre final al registrar (por ejemplo, 1000 ml se guarda como 1 L).
+                        </small>
+                        {errors.denominacion?.message && (
+                          <small className="block text-red-500">{errors.denominacion.message}</small>
+                        )}
+                      </div>
+                    ) : (
                       <FormInput
                         name="denominacion"
                         label="Denominación"
@@ -360,31 +419,22 @@ export default function RegistrarActualizarProductoForm({
                         onKeyDown={enterToObservacion}
                         inputRef={denominacionProductoRef}
                       />
-                    </div>
+                    )}
 
-                    
+                    {!producto && (
+                      <label className="flex items-center gap-2 text-sm text-gray-500">
+                        <input
+                          type="checkbox"
+                          checked={generarDenominacionAutomatica}
+                          onChange={(e) =>
+                            e.target.checked ? volverADenominacionAutomatica() : editarDenominacionManualmente()
+                          }
+                          className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        Denominación automática
+                      </label>
+                    )}
                   </div>
-
-                  <FormInput
-                    name="codigoProveedor"
-                    label="Codigo Interno"
-                    placeholder="Ingresa el Codigo Interno"
-                    disabled={producto && producto.sistema > 0 ? true : false}
-                  />
-
-                  <FormInput
-                    name="codigoReferencia"
-                    label="Codigo Referencia"
-                    placeholder="Ingresa el codigo de referencia"
-                  />
-
-                  <FormInput
-                    name="codigoBarra"
-                    label="Código De Barra"
-                    placeholder="Ingresa el código de barra (opcional)"
-                    inputRef={codigoBarraRef}
-                    onKeyDown={(e) => handleEnterEnSelect(e, "ALICUOTA-IVA")}
-                  />
 
                   {/* <FormInput
                     name="costo"
@@ -491,15 +541,13 @@ export default function RegistrarActualizarProductoForm({
                   </div>
 
                   <div className="flex-1 min-w-[120px]">
-                    {producto ? (
-                      <CantidadesInput
-                        name={`stock`}
-                        label="Stock"
-                        value={stock || 0}
-                        onChange={(value) => setValue(`stock`, Number(value))}
-                        disabled={true}
-                      />
-                    ) : null}
+                    <CantidadesInput
+                      name={`stock`}
+                      label={producto ? "Stock" : "Stock inicial"}
+                      value={stock || 0}
+                      onChange={(value) => setValue(`stock`, Number(value))}
+                      disabled={producto ? true : false}
+                    />
                   </div>
                 </div>
 
@@ -567,6 +615,7 @@ export default function RegistrarActualizarProductoForm({
                 onLineaChange={(linea) => {
                   methods.setValue("lineaId", linea?.id || 0);
                   setLineaSeleccionada(linea as any);
+                  setSelectedLinea(linea ?? undefined);
                 }}
                 onAgregarLinea={() => setMostrarFormularioLinea(true)}
               />
@@ -584,6 +633,7 @@ export default function RegistrarActualizarProductoForm({
                 onEnterMarca={(e) => handleEnterEnSelect(e, "MARCA")}
                 onChangeMarca={(marca) => {
                   methods.setValue("marcaId", marca?.id || 0);
+                  setSelectedMarca(marca ?? undefined);
                 }}
                 onAgregarMarca={() => setMostrarFormularioMarca(true)}
               />

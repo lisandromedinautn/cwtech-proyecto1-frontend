@@ -15,6 +15,8 @@ import {
 
 export interface FormValues {
   denominacion: string;
+  // CR-005: solo en el alta. En true, el backend genera la denominación.
+  generarDenominacionAutomatica?: boolean;
   observacion?: string | null;
   codigoProveedor?: string | null;
   codigoReferencia?: string | null;
@@ -64,11 +66,26 @@ export const sinCamposPrecioDerivados = (formData: FormValues): FormValues => {
 
 // Payload del alta y la modificación. La presentación viaja solo si tiene datos
 // y nunca como null (el backend lo rechaza si el producto ya tiene una).
+// Con la denominación automática (CR-005) viaja el flag y no la denominación:
+// el nombre lo arma el backend. En modo manual el flag no viaja (el backend lo
+// toma como false) y en la edición nunca se activa.
 export const armarPayloadProducto = (formData: FormValues) => {
-  const { presentacion, ...resto } = sinCamposPrecioDerivados(formData);
+  const { presentacion, generarDenominacionAutomatica, denominacion, ...resto } =
+    sinCamposPrecioDerivados(formData);
+  const denominacionPayload = generarDenominacionAutomatica
+    ? { generarDenominacionAutomatica: true }
+    : { denominacion };
   const presentacionPayload = presentacionParaPayload(presentacion);
-  return presentacionPayload ? { ...resto, presentacion: presentacionPayload } : resto;
+  return {
+    ...resto,
+    ...denominacionPayload,
+    ...(presentacionPayload ? { presentacion: presentacionPayload } : {}),
+  };
 };
+
+// Lo que viaja en el alta y la modificación (no es FormValues: con la
+// denominación automática, la denominación no viaja).
+export type ProductoPayload = ReturnType<typeof armarPayloadProducto>;
 
 //===================== schema de validacion ============================================//
 
@@ -106,18 +123,32 @@ export const schema = (
 ) =>
   yup.object().shape({
     presentacion: schemaPresentacion(presentacionObligatoria),
+    generarDenominacionAutomatica: yup.boolean().optional(),
+    // Con la denominación automática (CR-005) no se valida: la genera el backend.
     denominacion: yup
       .string()
       .trim()
       .lowercase()
-      .required("La denominación es obligatoria.")
-      .max(255, "Máximo 255 caracteres.")
-      .matches(/^[A-Za-z0-9 %-_"'áéíóúÁÉÍÓÚñÑ./]+$/, "Solo se permiten letras, números y espacios."),
+      .when("generarDenominacionAutomatica", {
+        is: true,
+        then: (schema) => schema.optional(),
+        otherwise: (schema) =>
+          schema
+            .required("La denominación es obligatoria.")
+            .max(255, "Máximo 255 caracteres.")
+            .matches(/^[A-Za-z0-9 %-_"'áéíóúÁÉÍÓÚñÑ./]+$/, "Solo se permiten letras, números y espacios."),
+      }),
     observacion: yup.string().optional().nullable(),
     codigoProveedor: yup.string().optional().nullable(),
     codigoReferencia: yup.string().optional().nullable(),
     codigoBarra: yup.string().optional().max(255, "Máximo 255 caracteres.").nullable(),
-    stock: yup.number().optional().nullable(),
+    stock: yup
+      .number()
+      .typeError("El stock debe ser un valor numérico.")
+      .integer("El stock debe ser un número entero.")
+      .min(0, "El stock no puede ser negativo.")
+      .optional()
+      .nullable(),
     costo: yup.number().typeError("El costo debe ser un valor númerico").required("El costo es obligatorio").min(0,"El costo debe ser mayor o igual a 0"),
     margen: yup.number().typeError("El margen debe ser un valor numérico").min(0,"El margen debe ser mayor o igual a 0").optional().nullable(),
     /* costoEnDolar: yup.boolean().optional().nullable(),
